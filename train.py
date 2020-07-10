@@ -4,13 +4,18 @@ import torch
 
 import trivia_preprocess as tp
 
-def train(config, train_dataloader, dev_dataloader, model, optimizer, word2idx):
+#------------------------
+# glove training
+# The main difference between Bert and Glove training is how to TOKENIZE and VECTORIZE the text
+#------------------------
+
+def train(config, train_dataloader, dev_dataloader, model, optimizer, word2idx=None, bert_tokenizer=None):
     max_accuracy = 0
     for e in range(1, config['train_epochs'] + 1):
         print('cur_epoch:', e)
         if config['is_train']:
-            train_epoch(config, train_dataloader, model, optimizer, word2idx)
-        similarity, labels = predict(config, dev_dataloader, model, word2idx)
+            train_epoch(config, train_dataloader, model, optimizer, word2idx=word2idx, bert_tokenizer=bert_tokenizer)
+        similarity, labels = predict(config, dev_dataloader, model, word2idx=word2idx, bert_tokenizer=bert_tokenizer)
         
         # eval in topk
         ks = config['k']
@@ -24,16 +29,19 @@ def train(config, train_dataloader, dev_dataloader, model, optimizer, word2idx):
             break
     print('best model top 1:', max_accuracy)
 
-def train_epoch(config, dataloader, model, optimizer, word2idx):
+def train_epoch(config, dataloader, model, optimizer, word2idx=None, bert_tokenizer=None):
     model.train()
     model.to(config['device'])
     running_loss = 0.0
     start_time = time.time()
     for batch_idx, data in enumerate(dataloader):
-        query, paragraphs, labels, query_to_para_idx = tp.get_query_and_sample_paragraph(data, config)  # List[List[str]], List[List[str]], List[int]
+        # List[List[str]], List[List[str]], List[int]
+        query, paragraphs, labels, query_to_para_idx = tp.get_query_and_sample_paragraph(data, config)
 
         # convert to torch tensor
-        query, query_len, paragraphs, paragraphs_len = tp.get_query_para_tensor(config, query, paragraphs, word2idx)
+        query, query_len, paragraphs, paragraphs_len = tp.get_query_para_tensor(config, query, paragraphs,
+                                                                                word2idx=word2idx,
+                                                                                bert_tokenizer=bert_tokenizer)
         labels = tp.get_label_tensor(config, labels)
 
         similarity = model.train_forward(query, query_len, paragraphs, paragraphs_len, query_to_para_idx)
@@ -48,7 +56,7 @@ def train_epoch(config, dataloader, model, optimizer, word2idx):
     running_loss /= len(dataloader)
     print('Training Loss:', running_loss, 'Time:', end_time - start_time, 's')
 
-def predict(config, dataloader, model, word2idx):
+def predict(config, dataloader, model, word2idx=None, bert_tokenizer=None):
     similarity = []
     total_labels = []
 
@@ -57,7 +65,9 @@ def predict(config, dataloader, model, word2idx):
         model.to(config['device'])
         for batch_idx, data in enumerate(dataloader):
             query, paragraph, labels, query_to_para_idx = tp.get_query_and_paragraph(data, config)
-            query, query_len, paragraph, paragraph_len = tp.get_query_para_tensor(config, query, paragraph, word2idx)
+            query, query_len, paragraph, paragraph_len = tp.get_query_para_tensor(config, query, paragraph,
+                                                                                  word2idx=word2idx,
+                                                                                  bert_tokenizer=bert_tokenizer)
             sim = model.predict_forward(query, query_len, paragraph, paragraph_len, query_to_para_idx)   # List[(para_num)]
             similarity.extend(sim)
             total_labels.extend(labels)

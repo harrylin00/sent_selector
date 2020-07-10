@@ -161,13 +161,7 @@ def eval_topk(similarity, labels, k):
         if len(label) <= k or sum(label) == 0:
             continue
         sort_idx = torch.argsort(sim, descending=True)
-        try:
-            topk_list = [label[idx] for i, idx in enumerate(sort_idx) if i < k]
-        except:
-            print(sort_idx)
-            print(sim)
-            print(sim.shape)
-            print(label)
+        topk_list = [label[idx] for i, idx in enumerate(sort_idx[:k])]
         accuracy.append(max(topk_list))
     return np.mean(accuracy)
 
@@ -203,10 +197,19 @@ def read_glove(filepath):
 def get_label_tensor(config, labels):
     return torch.LongTensor(labels).to(config['device'])
 
-def get_query_para_tensor(config, query, paragraphs, word2idx):
+def get_query_para_tensor(config, query, paragraphs, word2idx=None, bert_tokenizer=None):
     """ encode query and paragraphs into vector with tensor version"""
-    query = vectorize_to_tensor(query, word2idx)
-    paragraphs = vectorize_to_tensor(paragraphs, word2idx)
+    if config['embed_method'] == 'bert':
+        # tokenize the query and paragraphs
+        query = bert_tokenize(query, bert_tokenizer)
+        paragraphs = bert_tokenize(paragraphs, bert_tokenizer)
+
+        # vectorize, simply choose [1:-1] because of removing [CLS] and [SEP]
+        query = bert_tokenizer.encode(query)[1:-1]
+        paragraphs = bert_tokenizer.encode(paragraphs)[1:-1]
+    elif config['embed_method'] == 'glove':
+        query = vectorize_to_tensor(query, word2idx=word2idx)
+        paragraphs = vectorize_to_tensor(paragraphs, word2idx=word2idx)
 
     query = [torch.LongTensor(q) for q in query]
     query_len = torch.LongTensor([len(q) for q in query])
@@ -247,3 +250,16 @@ def data_metric(data_dict):
     print('relevant_num per question: ', relevant_num / question_num)
     print('irrelevant_num per question: ', irrelevant_num / question_num)
     print('para_length per para: ', para_len / para_num)
+
+# ------------------
+# Bert utility function
+# ------------------
+
+def bert_tokenize(list_strs, bert_tokenizer):
+    res = []
+    for strs in list_strs:
+        tokenized_res = []
+        for token in strs:
+            tokenized_res.extend(bert_tokenizer.tokenize(token))
+        res.append(tokenized_res)
+    return res

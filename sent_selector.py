@@ -4,16 +4,22 @@ from torch.nn.utils.rnn import *
 import torch.nn.functional as F
 
 class SentSelector(nn.Module):
-    def __init__(self, config, word_embed):
+    def __init__(self, config, word_embed=None, bert_config=None):
         super().__init__()
 
         self.config = config
-        self.input_size = config['input_size']
+        self.input_size = 300 if config['embed_method']=='glove' else bert_config.hidden_size
         self.hidden_size = config['hidden_size']
         self.num_layer = config['num_layer']
         self.dropout_prob = config['dropout']
 
-        self.word_embed = nn.Embedding.from_pretrained(torch.FloatTensor(word_embed), freeze=False, padding_idx=0)
+        if config['embed_method'] == 'glove':
+            self.word_embed = nn.Embedding.from_pretrained(torch.FloatTensor(word_embed), freeze=False, padding_idx=0)
+        elif config['embed_method'] == 'bert':
+            self.word_embed = word_embed
+            self.word_embed.weight.requires_grad=False   # for Bert model, we will freeze the word embeddings
+        # self.word_embed = nn.Embedding.from_pretrained(torch.FloatTensor(word_embed), freeze=False, padding_idx=0)
+
         self.dropout = nn.Dropout(self.dropout_prob)
 
         self.query_linear = nn.Linear(2 * self.hidden_size, self.hidden_size)
