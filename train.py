@@ -25,7 +25,6 @@ def train_epoch(config, dataloader, model, optimizer, word2idx):
     running_loss = 0.0
     start_time = time.time()
     for batch_idx, data in enumerate(dataloader):
-        # query = tp.get_query(data)  # List[List[str]]
         query, paragraphs, labels, query_to_para_idx = tp.get_query_and_sample_paragraph(data, config)  # List[List[str]], List[List[str]], List[int]
 
         # convert to torch tensor
