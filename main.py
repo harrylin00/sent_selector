@@ -12,8 +12,8 @@ def set_config():
         'train_data_path': 'data/TriviaQA-train-web.jsonl',
         'dev_data_path': 'data/TriviaQA-dev-web.jsonl',
         'glove_path': 'embeddings/glove.6B.300d.txt',
-        'model_write_path': 'lstm_glove8B_5.pt',
-        'model_load_path': 'lstm_glove8B_5.pt',
+        'model_write_path': 'lstm_glove8B.pt',
+        'model_load_path': 'lstm_glove8B.pt',
         # 'glove_dict_path': 'embeddings/glove_dict.json',
         # 'glove_embed_path': 'embeddings/glove_embed.npy',
 
@@ -27,10 +27,10 @@ def set_config():
         'num_layer': 3,
         'dropout': 0.2,
 
-        'is_load_model': True,
-        'is_train': False,
+        'is_load_model': False,
+        'is_train': True,
         'batch_size': 128,
-        'train_epochs': 10,
+        'train_epochs': 20,
         'device': torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
         'accumulate_step': 1
     }
@@ -39,8 +39,8 @@ def main():
     config = set_config()
 
     # data loading
-    # train_dict_list = tp.read_jsonl_to_list_dict(config['train_data_path'])
-    # train_dataloader = data.DataLoader(train_dict_list, batch_size=config['batch_size'], shuffle=True, collate_fn=lambda x:x)
+    train_dict_list = tp.read_jsonl_to_list_dict(config['train_data_path'])
+    train_dataloader = data.DataLoader(train_dict_list, batch_size=config['batch_size'], shuffle=True, collate_fn=lambda x:x)
 
     dev_dict_list = tp.read_jsonl_to_list_dict(config['dev_data_path'])
     dev_dataloader = data.DataLoader(dev_dict_list, batch_size=config['batch_size'], shuffle=False,
@@ -59,9 +59,6 @@ def main():
 
     # training and predict
     train.train(config, dev_dataloader, dev_dataloader, model, optimizer, word2idx)
-
-    # model save
-    torch.save(model.state_dict(), config['model_write_path'])
 
 if __name__ == '__main__':
     main()

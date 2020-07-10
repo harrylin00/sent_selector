@@ -5,12 +5,16 @@ import torch
 import trivia_preprocess as tp
 
 def train(config, train_dataloader, dev_dataloader, model, optimizer, word2idx):
+    max_accuracy = 0
     for e in range(1, config['train_epochs'] + 1):
         print('cur_epoch:', e)
         if config['is_train']:
             train_epoch(config, train_dataloader, model, optimizer, word2idx)
         similarity, labels = predict(config, dev_dataloader, model, word2idx)
         accuracy = tp.eval_topk(similarity, labels, k=5)
+        if max_accuracy < accuracy and config['is_train']:
+            max_accuracy = accuracy
+            torch.save(model.state_dict(), config['model_write_path'])
         print('model topk evaluation:', accuracy)
         if not config['is_train']:
             break
