@@ -27,7 +27,13 @@ class SentSelector(nn.Module):
     def train_forward(self, query, query_len, paragraph, paragraph_len, query_to_para_idx):
         query_hidden = self.encode_query(query, query_len)
         paragraph_hidden = self.encode_paragraph(paragraph, paragraph_len)
-        similarity = self.compute_similarity(query_hidden, paragraph_hidden, query_to_para_idx)
+        similarity = self.compute_similarity(query_hidden, paragraph_hidden)
+        return similarity
+
+    def predict_forward(self, query, query_len, paragraph, paragraph_len, query_to_para_idx):
+        query_hidden = self.encode_query(query, query_len)
+        paragraph_hidden = self.encode_paragraph(paragraph, paragraph_len)
+        similarity = self.predict_compute_similarity(query_hidden, paragraph_hidden, query_to_para_idx)
         return similarity
 
     def encode_query(self, query, query_len):
@@ -39,7 +45,7 @@ class SentSelector(nn.Module):
 
         out, (h, c) = self.query_encoder(query_embed)    # query_hidden [num_layer * bidirection, batch, hidden_size]
         h = h.view(self.num_layer, -1, batch_size, self.hidden_size).permute(0, 2, 1, 3)[-1].reshape(batch_size, -1)
-        query_hidden = F.tanh(h)
+        query_hidden = torch.tanh(h)
         query_hidden = self.query_linear(query_hidden)
         return query_hidden
 
@@ -52,14 +58,11 @@ class SentSelector(nn.Module):
 
         out, (h, c) = self.para_encoder(para_embed)
         h = h.view(self.num_layer, -1, batch_size, self.hidden_size).permute(0, 2, 1, 3)[-1].reshape(batch_size, -1)
-        # out, out_lens = pad_packed_sequence(out, batch_first=True)
-        # para_hidden = para_hidden[-1]
-        # para_hidden = para_hidden.view(para_hidden.size(0), self.config['num_layer'], -1)[:, -1, :]
-        para_hidden = F.tanh(h)
+        para_hidden = torch.tanh(h)
         para_hidden = self.para_linear(para_hidden)
         return para_hidden
 
-    def compute_similarity(self, query, paragraph, query_to_para_idx):
+    def compute_similarity(self, query, paragraph):
         """ compute the similarity between query and related paragraph """
         batch_size = query.size(0)
 
@@ -67,3 +70,14 @@ class SentSelector(nn.Module):
         paragraph = paragraph.reshape(batch_size, -1, self.hidden_size)
         sim_result = torch.bmm(paragraph, query).squeeze()
         return sim_result
+
+    def predict_compute_similarity(self, query, paragraph, query_to_para_idx):
+        batch_size = query.size(0)
+        similarity = []
+
+        for i in range(batch_size):
+            que = query[i].unsqueeze(1).clone()  # [hidden, 1]
+            para = paragraph[query_to_para_idx[i] : query_to_para_idx[i + 1]].clone()   #[num, hidden]
+            sim = torch.mm(para, que).squeeze()   # [num]
+            similarity.append(sim)
+        return similarity

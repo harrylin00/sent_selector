@@ -1,12 +1,19 @@
 import time
 import torch.nn.functional as F
+import torch
 
 import trivia_preprocess as tp
 
 def train(config, train_dataloader, dev_dataloader, model, optimizer, word2idx):
     for e in range(1, config['train_epochs'] + 1):
         print('cur_epoch:', e)
-        train_epoch(config, train_dataloader, model, optimizer, word2idx)
+        if config['is_train']:
+            train_epoch(config, train_dataloader, model, optimizer, word2idx)
+        similarity, labels = predict(config, dev_dataloader, model, word2idx)
+        accuracy = tp.eval_topk(similarity, labels, k=5)
+        print('model topk evaluation:', accuracy)
+        if not config['is_train']:
+            break
 
 def train_epoch(config, dataloader, model, optimizer, word2idx):
     model.train()
@@ -32,3 +39,19 @@ def train_epoch(config, dataloader, model, optimizer, word2idx):
     end_time = time.time()
     running_loss /= len(dataloader)
     print('Training Loss:', running_loss, 'Time:', end_time - start_time, 's')
+
+def predict(config, dataloader, model, word2idx):
+    similarity = []
+    total_labels = []
+
+    with torch.no_grad():
+        model.eval()
+        model.to(config['device'])
+        for batch_idx, data in enumerate(dataloader):
+            query, paragraph, labels, query_to_para_idx = tp.get_query_and_paragraph(data, config)
+            query, query_len, paragraph, paragraph_len = tp.get_query_para_tensor(config, query, paragraph, word2idx)
+            sim = model.predict_forward(query, query_len, paragraph, paragraph_len, query_to_para_idx)   # List[(para_num)]
+            similarity.extend(sim)
+            total_labels.extend(labels)
+    return similarity, total_labels
+

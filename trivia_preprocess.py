@@ -2,6 +2,7 @@ import json
 import random
 import os
 from torch.nn.utils.rnn import *
+import numpy as np
 
 # ------------------
 # read and write data
@@ -127,6 +128,42 @@ def sample_paragraph(query, dict_list, config):
 
 def get_query(dict_list):
     return [dict['question_tokens'] for dict in dict_list]
+
+# ------------------
+# predict phase
+# ------------------
+
+def get_query_and_paragraph(dict_list, config):
+    query = get_query(dict_list)
+    paragraph, labels, query_to_para_idx = get_paragraph(dict_list, config)
+    return query, paragraph, labels, query_to_para_idx
+
+def get_paragraph(dict_list, config):
+    labels = []
+    paragraphs = []
+    query_to_para_idx = []
+    for dict in dict_list:
+        query_to_para_idx.append(len(paragraphs))
+        paragraphs.extend(dict['relevant'])
+        paragraphs.extend(dict['irrelevant'])
+        cur_label = [1] * len(dict['relevant']) + [0] * len(dict['irrelevant'])
+        labels.append(cur_label)
+    query_to_para_idx.append(len(paragraphs))
+    return paragraphs, labels, query_to_para_idx
+
+# ------------------
+# eval phase
+# ------------------
+
+def eval_topk(similarity, labels, k):
+    accuracy = []
+    for sim, label in zip(similarity, labels):
+        if len(label) < k or sum(label) == 0:
+            continue
+        sort_idx = torch.argsort(sim, descending=True)
+        topk_list = [label[idx] for i, idx in enumerate(sort_idx) if i < k]
+        accuracy.append(max(topk_list))
+    return np.mean(accuracy)
 
 # ------------------
 # dictionary building

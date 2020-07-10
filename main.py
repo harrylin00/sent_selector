@@ -28,6 +28,7 @@ def set_config():
         'dropout': 0.2,
 
         'is_load_model': True,
+        'is_train': False,
         'batch_size': 128,
         'train_epochs': 10,
         'device': torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
@@ -38,8 +39,8 @@ def main():
     config = set_config()
 
     # data loading
-    train_dict_list = tp.read_jsonl_to_list_dict(config['train_data_path'])
-    train_dataloader = data.DataLoader(train_dict_list, batch_size=config['batch_size'], shuffle=True, collate_fn=lambda x:x)
+    # train_dict_list = tp.read_jsonl_to_list_dict(config['train_data_path'])
+    # train_dataloader = data.DataLoader(train_dict_list, batch_size=config['batch_size'], shuffle=True, collate_fn=lambda x:x)
 
     dev_dict_list = tp.read_jsonl_to_list_dict(config['dev_data_path'])
     dev_dataloader = data.DataLoader(dev_dict_list, batch_size=config['batch_size'], shuffle=False,
@@ -57,7 +58,7 @@ def main():
     optimizer = optim.Adam(model.parameters())
 
     # training and predict
-    train.train(config, train_dataloader, dev_dataloader, model, optimizer, word2idx)
+    train.train(config, dev_dataloader, dev_dataloader, model, optimizer, word2idx)
 
     # model save
     torch.save(model.state_dict(), config['model_write_path'])
