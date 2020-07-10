@@ -158,10 +158,16 @@ def get_paragraph(dict_list, config):
 def eval_topk(similarity, labels, k):
     accuracy = []
     for sim, label in zip(similarity, labels):
-        if len(label) < k or sum(label) == 0:
+        if len(label) <= k or sum(label) == 0:
             continue
         sort_idx = torch.argsort(sim, descending=True)
-        topk_list = [label[idx] for i, idx in enumerate(sort_idx) if i < k]
+        try:
+            topk_list = [label[idx] for i, idx in enumerate(sort_idx) if i < k]
+        except:
+            print(sort_idx)
+            print(sim)
+            print(sim.shape)
+            print(label)
         accuracy.append(max(topk_list))
     return np.mean(accuracy)
 

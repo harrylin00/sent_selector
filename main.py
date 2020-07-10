@@ -27,12 +27,14 @@ def set_config():
         'num_layer': 3,
         'dropout': 0.2,
 
-        'is_load_model': False,
+        'is_load_model': True,
         'is_train': True,
         'batch_size': 128,
-        'train_epochs': 20,
+        'train_epochs': 10,
         'device': torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
-        'accumulate_step': 1
+        'accumulate_step': 1,
+
+        'k': [1, 3, 5]
     }
 
 def main():
@@ -58,7 +60,7 @@ def main():
     optimizer = optim.Adam(model.parameters())
 
     # training and predict
-    train.train(config, dev_dataloader, dev_dataloader, model, optimizer, word2idx)
+    train.train(config, train_dataloader, dev_dataloader, model, optimizer, word2idx)
 
 if __name__ == '__main__':
     main()

@@ -11,13 +11,18 @@ def train(config, train_dataloader, dev_dataloader, model, optimizer, word2idx):
         if config['is_train']:
             train_epoch(config, train_dataloader, model, optimizer, word2idx)
         similarity, labels = predict(config, dev_dataloader, model, word2idx)
-        accuracy = tp.eval_topk(similarity, labels, k=5)
-        if max_accuracy < accuracy and config['is_train']:
-            max_accuracy = accuracy
-            torch.save(model.state_dict(), config['model_write_path'])
-        print('model topk evaluation:', accuracy)
+        
+        # eval in topk
+        ks = config['k']
+        for k in ks:
+            accuracy = tp.eval_topk(similarity, labels, k=k)
+            if k == 1 and max_accuracy < accuracy and config['is_train']:
+                max_accuracy = accuracy
+                torch.save(model.state_dict(), config['model_write_path'])
+            print('model top', k, ' evaluation:', accuracy)
         if not config['is_train']:
             break
+    print('best model top 1:', max_accuracy)
 
 def train_epoch(config, dataloader, model, optimizer, word2idx):
     model.train()
