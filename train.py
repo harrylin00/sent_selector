@@ -21,10 +21,11 @@ def train(config, train_dataloader, dev_dataloader, model, optimizer, word2idx=N
         ks = config['k']
         for k in ks:
             accuracy = tp.eval_topk(similarity, labels, k=k)
+            precision = tp.eval_precision_topk(similarity, labels, k=k)
             if k == 1 and max_accuracy < accuracy and config['is_train']:
                 max_accuracy = accuracy
                 torch.save(model.state_dict(), config['model_write_path'])
-            print('model top', k, ' evaluation:', accuracy)
+            print('model top', k, ' accuracy evaluation:', accuracy, ', precision evaluation:', precision)
         if not config['is_train']:
             break
     print('best model top 1:', max_accuracy)

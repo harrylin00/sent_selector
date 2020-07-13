@@ -15,8 +15,6 @@ def set_config(embed_method='glove'):
         'glove_path': 'embeddings/glove.6B.300d.txt',
         'model_write_path': 'lstm_'+embed_method+'.pt',
         'model_load_path': 'lstm_'+embed_method+'.pt',
-        # 'glove_dict_path': 'embeddings/glove_dict.json',
-        # 'glove_embed_path': 'embeddings/glove_embed.npy',
 
         'embed_method': embed_method,
         'bert_config': 'bert-base-uncased',
@@ -24,7 +22,6 @@ def set_config(embed_method='glove'):
         'relevant_num': 1,
         'irrelevant_num': 5,
 
-        # 'input_size': 300,
         'hidden_size': 256,
         'num_layer': 3,
         'dropout': 0.2,
@@ -77,7 +74,7 @@ def bert_train(config, train_dataloader, dev_dataloader):
 
 
 def main():
-    config = set_config('bert')
+    config = set_config(embed_method='bert')
 
     # data loading
     train_dict_list = tp.read_jsonl_to_list_dict(config['train_data_path'])

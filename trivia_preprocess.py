@@ -63,17 +63,21 @@ def read_jsonl_to_list_dict(filepath):
                 for answer_info in qa['detected_answers']:
                     for char_start, char_end in answer_info['char_spans']:
                         for para_idx, (para_start, para_end) in enumerate(paragraphs_offset):
-                            if not paragraph_visited[para_idx] and para_start <= char_start and para_end >= char_end:
+                            if not paragraph_visited[para_idx] and \
+                                para_start <= char_start and para_end >= char_end and \
+                                    len(paragraphs[para_idx]) > 0:
+
                                 cur_dict['relevant'].append([word.lower() for word in paragraphs[para_idx]])
                                 paragraph_visited[para_idx] = True
                                 break
                             if para_start > char_end:
                                 break
                 for para_idx, para in enumerate(paragraphs):
-                    if not paragraph_visited[para_idx]:
+                    if not paragraph_visited[para_idx] and len(para) > 0:
                         cur_dict['irrelevant'].append([word.lower() for word in para])
 
-                data_dict.append(cur_dict)
+                if len(cur_dict['relevant']) > 0 and len(cur_dict['irrelevant']) > 0:
+                    data_dict.append(cur_dict)
 
     return data_dict
 
@@ -164,6 +168,16 @@ def eval_topk(similarity, labels, k):
         topk_list = [label[idx] for i, idx in enumerate(sort_idx[:k])]
         accuracy.append(max(topk_list))
     return np.mean(accuracy)
+
+def eval_precision_topk(similarity, labels, k):
+    precision = []
+    for sim, label in zip(similarity, labels):
+        if len(label) <= k or sum(label) == 0:
+            continue
+        sort_idx = torch.argsort(sim, descending=True)
+        topk_list = [label[idx] for i, idx in enumerate(sort_idx[:k])]
+        precision.append(np.mean(topk_list))
+    return np.mean(precision)
 
 # ------------------
 # dictionary building
