@@ -25,11 +25,11 @@ def set_config(embed_method='glove'):
         'irrelevant_num': 5,
 
         # 'input_size': 300,
-        'hidden_size': 512,
+        'hidden_size': 256,
         'num_layer': 3,
         'dropout': 0.2,
 
-        'is_load_model': True,
+        'is_load_model': False,
         'is_train': True,
         'batch_size': 128,
         'train_epochs': 10,
@@ -77,7 +77,7 @@ def bert_train(config, train_dataloader, dev_dataloader):
 
 
 def main():
-    config = set_config()
+    config = set_config('bert')
 
     # data loading
     train_dict_list = tp.read_jsonl_to_list_dict(config['train_data_path'])

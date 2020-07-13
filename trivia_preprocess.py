@@ -205,8 +205,9 @@ def get_query_para_tensor(config, query, paragraphs, word2idx=None, bert_tokeniz
         paragraphs = bert_tokenize(paragraphs, bert_tokenizer)
 
         # vectorize, simply choose [1:-1] because of removing [CLS] and [SEP]
-        query = bert_tokenizer.encode(query)[1:-1]
-        paragraphs = bert_tokenizer.encode(paragraphs)[1:-1]
+        # bert is restricted with max_len=512
+        query = [bert_tokenizer.encode(que, max_length=512, truncation=True)[1:-1] for que in query]
+        paragraphs = [bert_tokenizer.encode(para, max_length=512, truncation=True)[1:-1] for para in paragraphs]
     elif config['embed_method'] == 'glove':
         query = vectorize_to_tensor(query, word2idx=word2idx)
         paragraphs = vectorize_to_tensor(paragraphs, word2idx=word2idx)
