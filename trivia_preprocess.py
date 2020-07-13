@@ -276,5 +276,7 @@ def bert_tokenize(list_strs, bert_tokenizer):
         tokenized_res = []
         for token in strs:
             tokenized_res.extend(bert_tokenizer.tokenize(token))
+        if len(tokenized_res) == 0:     # remove the case when tokenized_res = [], else it will raise an error when encoding
+            tokenized_res = ['']
         res.append(tokenized_res)
     return res
