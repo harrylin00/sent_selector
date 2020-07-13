@@ -18,6 +18,7 @@ def set_config(embed_method='glove'):
 
         'embed_method': embed_method,
         'bert_config': 'bert-base-uncased',
+        'freeze_bert': False,
 
         'relevant_num': 1,
         'irrelevant_num': 5,
@@ -26,7 +27,7 @@ def set_config(embed_method='glove'):
         'num_layer': 3,
         'dropout': 0.2,
 
-        'is_load_model': False,
+        'is_load_model': True,
         'is_train': True,
         'batch_size': 128,
         'train_epochs': 10,
@@ -63,6 +64,7 @@ def bert_train(config, train_dataloader, dev_dataloader):
 
     model = SentSelector(config, word_embed=word_embed, bert_config=bert_config)
     if os.path.exists(config['model_load_path']) and config['is_load_model']:
+        print('begin to load model:', config['model_load_path'])
         model.load_state_dict(torch.load(config['model_load_path']))
 
     # optimizer setting

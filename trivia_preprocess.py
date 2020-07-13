@@ -175,7 +175,7 @@ def eval_precision_topk(similarity, labels, k):
         if len(label) <= k or sum(label) == 0:
             continue
         sort_idx = torch.argsort(sim, descending=True)
-        topk_list = [label[idx] for i, idx in enumerate(sort_idx[:k])]
+        topk_list = [label[idx] for i, idx in enumerate(sort_idx[:min(k, sum(label))])]
         precision.append(np.mean(topk_list))
     return np.mean(precision)
 

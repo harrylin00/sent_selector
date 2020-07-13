@@ -17,8 +17,8 @@ class SentSelector(nn.Module):
             self.word_embed = nn.Embedding.from_pretrained(torch.FloatTensor(word_embed), freeze=False, padding_idx=0)
         elif config['embed_method'] == 'bert':
             self.word_embed = word_embed
-            self.word_embed.weight.requires_grad=False   # for Bert model, we will freeze the word embeddings
-        # self.word_embed = nn.Embedding.from_pretrained(torch.FloatTensor(word_embed), freeze=False, padding_idx=0)
+            if config['freeze_bert']:
+                self.word_embed.weight.requires_grad=False   # for Bert model, we will freeze the word embeddings
 
         self.dropout = nn.Dropout(self.dropout_prob)
 
