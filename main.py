@@ -18,7 +18,7 @@ def set_config(embed_method='glove'):
 
         'embed_method': embed_method,
         'bert_config': 'bert-base-uncased',
-        'freeze_bert': False,
+        'freeze_bert': True,
 
         'relevant_num': 1,
         'irrelevant_num': 5,
