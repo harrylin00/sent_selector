@@ -221,22 +221,52 @@ def get_query_para_tensor(config, query, paragraphs, word2idx=None, bert_tokeniz
 
         # vectorize, simply choose [1:-1] because of removing [CLS] and [SEP]
         # bert is restricted with max_len=512
-        query = [bert_tokenizer.encode(que, max_length=512, truncation=True)[1:-1] for que in query]
-        paragraphs = [bert_tokenizer.encode(para, max_length=512, truncation=True)[1:-1] for para in paragraphs]
+        query_tensor = [bert_tokenizer.encode(que, max_length=512, truncation=True)[1:-1] for que in query]
+        paragraphs_tensor = [bert_tokenizer.encode(para, max_length=512, truncation=True)[1:-1] for para in paragraphs]
     elif config['embed_method'] == 'glove':
-        query = vectorize_to_tensor(query, word2idx=word2idx)
-        paragraphs = vectorize_to_tensor(paragraphs, word2idx=word2idx)
+        query_tensor = vectorize_to_tensor(query, word2idx=word2idx)
+        paragraphs_tensor = vectorize_to_tensor(paragraphs, word2idx=word2idx)
 
-    query = [torch.LongTensor(q) for q in query]
-    query_len = torch.LongTensor([len(q) for q in query])
-    query_pad = pad_sequence(query, batch_first=True)
+    if config['use_charCNN']:
+        query_char_tensor = vectorize_to_char_tensor(config, query, alpha_dict=config['alpha_dict'])
+        paragraph_char_tensor = vectorize_to_char_tensor(config, paragraphs, alpha_dict=config['alpha_dict'])
 
-    paragraphs = [torch.LongTensor(para) for para in paragraphs]
-    paragraphs_len = torch.LongTensor([len(para) for para in paragraphs])
-    paragraphs_pad = pad_sequence(paragraphs, batch_first=True)
+        query_char_tensor = pad_sequence(query_char_tensor, batch_first=True)
+        paragraph_char_tensor = pad_sequence(paragraph_char_tensor, batch_first=True)
+
+    query_tensor = [torch.LongTensor(q) for q in query_tensor]
+    query_len = torch.LongTensor([len(q) for q in query_tensor])
+    query_pad = pad_sequence(query_tensor, batch_first=True)
+
+    paragraphs_tensor = [torch.LongTensor(para) for para in paragraphs_tensor]
+    paragraphs_len = torch.LongTensor([len(para) for para in paragraphs_tensor])
+    paragraphs_pad = pad_sequence(paragraphs_tensor, batch_first=True)
 
     device = config['device']
-    return query_pad.to(device), query_len.to(device), paragraphs_pad.to(device), paragraphs_len.to(device)
+    if config['use_charCNN']:
+        return query_pad.to(device), query_char_tensor, query_len.to(device),\
+               paragraphs_pad.to(device), paragraph_char_tensor.to(device), paragraphs_len.to(device)
+    else:
+        return query_pad.to(device), None, query_len.to(device),\
+               paragraphs_pad.to(device), None, paragraphs_len.to(device)
+
+def vectorize_to_char_tensor(config, strs_list, alpha_dict : str):
+    """
+    Convert query to char-level one hot vector
+    Return: [batch, seq_len (word_num), cnn_word_len, 1 + len(alpha_dict)]
+    """
+    eye_matrix = torch.eye(1 + len(alpha_dict))   # Add 1 is for <pad> char
+    cnn_word_len = config['cnn_word_len']
+    vectors = []
+    for strs in strs_list:
+        vector = []
+        for str in strs:
+            char_vec = [eye_matrix[alpha_dict.find(ch) + 1] for ch in str[:cnn_word_len]] + \
+                       [eye_matrix[0] for i in range(max(0, cnn_word_len - len(str)))]
+            char_vec = torch.stack(char_vec)
+            vector.append(char_vec)
+        vectors.append(torch.stack(vector))
+    return vectors
 
 def vectorize_to_tensor(strs_list, word2idx):
     vectors = []
@@ -303,3 +333,14 @@ def compute_lexical_similarity(config, query, paragraph, query_to_para_idx):
         lexical_sim.append(sim)
     return lexical_sim
 
+#---------------------
+# CharCNN util
+#---------------------
+
+def read_alpha_dict(config):
+    with open(config['alpha_file'], 'r') as f:
+        obj = json.load(f)
+    return obj
+
+if __name__ == '__main__':
+    read_alpha_dict({'alpha_file': 'alphabet.json'})

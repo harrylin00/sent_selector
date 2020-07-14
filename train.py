@@ -36,12 +36,14 @@ def train_epoch(config, dataloader, model, optimizer, word2idx=None, bert_tokeni
         query, paragraphs, labels, query_to_para_idx = tp.get_query_and_sample_paragraph(data, config)
 
         # convert to torch tensor
-        query, query_len, paragraphs, paragraphs_len = tp.get_query_para_tensor(config, query, paragraphs,
-                                                                                word2idx=word2idx,
-                                                                                bert_tokenizer=bert_tokenizer)
+        query_tensor, query_char_tensor, query_len, paragraph_tensor, paragraph_char_tensor, paragraph_len = \
+            tp.get_query_para_tensor(config, query, paragraphs, word2idx=word2idx, bert_tokenizer=bert_tokenizer)
+
         labels = tp.get_label_tensor(config, labels)
 
-        similarity = model.train_forward(query, query_len, paragraphs, paragraphs_len, query_to_para_idx)
+        similarity = model.train_forward(query_tensor, query_char_tensor, query_len,
+                                         paragraph_tensor, paragraph_char_tensor, paragraph_len,
+                                         query_to_para_idx)
         loss = F.cross_entropy(similarity, labels)
         running_loss += loss.item()
         loss.backward()
@@ -67,10 +69,12 @@ def predict(config, dataloader, model, word2idx=None, bert_tokenizer=None):
         for batch_idx, data in enumerate(dataloader):
             # List[List[str]], List[List[str]], List[int]
             query, paragraph, labels, query_to_para_idx = tp.get_query_and_paragraph(data, config)
-            query_tensor, query_len, paragraph_tensor, paragraph_len = tp.get_query_para_tensor(config, query, paragraph,
-                                                                                  word2idx=word2idx,
-                                                                                  bert_tokenizer=bert_tokenizer)
-            sim = model.predict_forward(query_tensor, query_len, paragraph_tensor, paragraph_len, query_to_para_idx)   # List[(para_num)]
+            query_tensor, query_char_tensor, query_len, paragraph_tensor, paragraph_char_tensor, paragraph_len =\
+                tp.get_query_para_tensor(config, query, paragraph, word2idx=word2idx, bert_tokenizer=bert_tokenizer)
+
+            sim = model.predict_forward(query_tensor, query_char_tensor, query_len,
+                                        paragraph_tensor, paragraph_char_tensor, paragraph_len,
+                                        query_to_para_idx)   # List[(para_num)]
 
             if config['use_lexical']:    # use lexical information by computing tf-idf values
                 lexical_sim = tp.compute_lexical_similarity(config, query, paragraph, query_to_para_idx)
@@ -110,10 +114,12 @@ def alpha_search(config, dataloader, model, word2idx=None, bert_tokenizer=None):
         for batch_idx, data in enumerate(dataloader):
             # List[List[str]], List[List[str]], List[int]
             query, paragraph, labels, query_to_para_idx = tp.get_query_and_paragraph(data, config)
-            query_tensor, query_len, paragraph_tensor, paragraph_len = tp.get_query_para_tensor(config, query, paragraph,
-                                                                                      word2idx=word2idx,
-                                                                                          bert_tokenizer=bert_tokenizer)
-            sim = model.predict_forward(query_tensor, query_len, paragraph_tensor, paragraph_len, query_to_para_idx)   # List[(para_num)]
+            query_tensor, query_char_tensor, query_len, paragraph_tensor, paragraph_char_tensor, paragraph_len =\
+                tp.get_query_para_tensor(config, query, paragraph, word2idx=word2idx, bert_tokenizer=bert_tokenizer)
+
+            sim = model.predict_forward(query_tensor, query_char_tensor, query_len,
+                                        paragraph_tensor, paragraph_char_tensor, paragraph_len,
+                                        query_to_para_idx)   # List[(para_num)]
             lexical_sim = tp.compute_lexical_similarity(config, query, paragraph, query_to_para_idx)
 
             model_similarity.extend(sim)

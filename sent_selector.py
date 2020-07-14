@@ -3,6 +3,8 @@ import torch.nn as nn
 from torch.nn.utils.rnn import *
 import torch.nn.functional as F
 
+from charCNN import CharCNN
+
 class SentSelector(nn.Module):
     def __init__(self, config, word_embed=None, bert_config=None):
         super().__init__()
@@ -20,6 +22,10 @@ class SentSelector(nn.Module):
             if config['freeze_bert']:
                 self.word_embed.weight.requires_grad=False   # for Bert model, we will freeze the word embeddings
 
+        if config['use_charCNN']:
+            self.cnn_embed = CharCNN(config)
+            self.input_size += config['cnn_hidden_size']
+
         self.dropout = nn.Dropout(self.dropout_prob)
 
         self.query_linear = nn.Linear(2 * self.hidden_size, self.hidden_size)
@@ -30,23 +36,43 @@ class SentSelector(nn.Module):
         self.para_encoder = nn.LSTM(self.input_size, self.hidden_size, num_layers=self.num_layer,
                                      batch_first=True, dropout=self.dropout_prob, bidirectional=True)
 
-    def train_forward(self, query, query_len, paragraph, paragraph_len, query_to_para_idx):
-        query_hidden = self.encode_query(query, query_len)
-        paragraph_hidden = self.encode_paragraph(paragraph, paragraph_len)
+    def train_forward(self, query, query_char, query_len, paragraph, paragraph_char, paragraph_len, query_to_para_idx):
+        """
+        It is the same with predict_forward
+        :param query: [batch, seq_len]
+        :param query_char:  [batch, seq_len, word_len, alpha_len + 1]
+        :param query_len: [batch, seq_len]
+        :param paragraph:
+        :param paragraph_char:
+        :param paragraph_len:
+        :param query_to_para_idx:
+        :return:
+        """
+
+        query_hidden = self.encode_query(query, query_char, query_len)
+        paragraph_hidden = self.encode_paragraph(paragraph, paragraph_char, paragraph_len)
         similarity = self.compute_similarity(query_hidden, paragraph_hidden)
         return similarity
 
-    def predict_forward(self, query, query_len, paragraph, paragraph_len, query_to_para_idx):
-        query_hidden = self.encode_query(query, query_len)
-        paragraph_hidden = self.encode_paragraph(paragraph, paragraph_len)
+    def predict_forward(self, query, query_char, query_len, paragraph, paragraph_char, paragraph_len, query_to_para_idx):
+        query_hidden = self.encode_query(query, query_char, query_len)
+        paragraph_hidden = self.encode_paragraph(paragraph, paragraph_char, paragraph_len)
         similarity = self.predict_compute_similarity(query_hidden, paragraph_hidden, query_to_para_idx)
         return similarity
 
-    def encode_query(self, query, query_len):
-        batch_size = query.size(0)
+    def encode_query(self, query, query_char, query_len):
+        batch_size, seq_len = query.size(0), query.size(1)
 
         query_embed = self.word_embed(query)
         query_embed = self.dropout(query_embed)
+
+        if self.config['use_charCNN']:
+            query_char = query_char.reshape(
+                batch_size * seq_len, self.config['cnn_word_len'], self.config['cnn_input_size'])\
+                .permute(0, 2, 1)       # [batch * seq_len, input_size, word_len]
+            query_char_embed = self.cnn_embed(query_char).reshape(batch_size, seq_len, -1)  # [batch, seq_len, hidden]
+            query_embed = torch.cat((query_embed, query_char_embed), dim=-1)
+
         query_embed = pack_padded_sequence(query_embed, query_len, batch_first=True, enforce_sorted=False)
 
         out, (h, c) = self.query_encoder(query_embed)    # query_hidden [num_layer * bidirection, batch, hidden_size]
@@ -55,11 +81,19 @@ class SentSelector(nn.Module):
         query_hidden = self.query_linear(query_hidden)
         return query_hidden
 
-    def encode_paragraph(self, paragraph, paragraph_len):
-        batch_size = paragraph.size(0)
+    def encode_paragraph(self, paragraph, paragraph_char, paragraph_len):
+        batch_size, seq_len = paragraph.size(0), paragraph.size(1)
 
         para_embed = self.word_embed(paragraph)
         para_embed = self.dropout(para_embed)
+
+        if self.config['use_charCNN']:
+            paragraph_char = paragraph_char.reshape(
+                batch_size * seq_len, self.config['cnn_word_len'], self.config['cnn_input_size'])\
+                .permute(0, 2, 1)       # [batch * seq_len, input_size, word_len]
+            paragraph_char_embed = self.cnn_embed(paragraph_char).reshape(batch_size, seq_len, -1)  # [batch, seq_len, hidden]
+            para_embed = torch.cat((para_embed, paragraph_char_embed), dim=-1)
+
         para_embed = pack_padded_sequence(para_embed, paragraph_len, batch_first=True, enforce_sorted=False)
 
         out, (h, c) = self.para_encoder(para_embed)

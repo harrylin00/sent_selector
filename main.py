@@ -8,13 +8,13 @@ import torch
 import os
 from transformers import BertTokenizer, BertModel, BertConfig
 
-def set_config(embed_method='glove'):
+def set_config(embed_method='glove', use_charCNN=False):
     return {
         'train_data_path': 'data/TriviaQA-train-web.jsonl',
         'dev_data_path': 'data/TriviaQA-dev-web.jsonl',
         'glove_path': 'embeddings/glove.6B.300d.txt',
-        'model_write_path': 'lstm_'+embed_method+'.pt',
-        'model_load_path': 'lstm_'+embed_method+'.pt',
+        'model_write_path': 'lstm_'+embed_method+'.pt' if not use_charCNN else 'cnn_lstm_'+embed_method+'.pt',
+        'model_load_path': 'lstm_'+embed_method+'.pt'  if not use_charCNN else 'cnn_lstm_'+embed_method+'.pt',
 
         'embed_method': embed_method,
         'bert_config': 'bert-base-uncased',
@@ -27,17 +27,32 @@ def set_config(embed_method='glove'):
         'num_layer': 3,
         'dropout': 0.2,
 
-        'is_load_model': True,
-        'is_train': False,
-        'use_lexical': True,
+        'use_lexical': False,   # use tf-idf similarity or not
         'lexical_alpha': 0.5,
-        'batch_size': 128,
+
+        'use_charCNN': use_charCNN,
+        'cnn_word_len': 20,    # represent the length of each word
+        'cnn_input_size': None, # the number of character, decided by alpha_file
+        'cnn_hidden_size': 256,
+        'alpha_file': 'alphabet.json',
+        'alpha_dict': None, # will be gotten from alpha_file
+
+
+        'is_load_model': True,
+        'is_train': True,
+        'batch_size': 64,
         'train_epochs': 10,
         'device': torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
         'accumulate_step': 1,
 
         'k': [1, 3, 5]
     }
+
+def set_charCNN_config(config):
+    alphabet = ''.join(tp.read_alpha_dict(config))
+    config['alpha_dict'] = alphabet
+    config['cnn_input_size'] = len(alphabet) + 1    # add <pad> char
+    return config
 
 def glove_train(config):
     # Glove loading
@@ -93,7 +108,7 @@ def lexical_parameter_search():
 
 
 def main():
-    config = set_config(embed_method='bert')
+    config = set_config(embed_method='glove', use_charCNN=True)
 
     # data loading
     train_dict_list = tp.read_jsonl_to_list_dict(config['train_data_path'])
@@ -102,6 +117,9 @@ def main():
     dev_dict_list = tp.read_jsonl_to_list_dict(config['dev_data_path'])
     dev_dataloader = data.DataLoader(dev_dict_list, batch_size=config['batch_size'], shuffle=False,
                                        collate_fn=lambda x: x)
+
+    if config['use_charCNN']:
+        config = set_charCNN_config(config)
 
     if config['embed_method'] == 'glove':
         model, optimizer, word2idx, tokenizer = glove_train(config)
@@ -112,5 +130,5 @@ def main():
     train.train(config, train_dataloader, dev_dataloader, model, optimizer, word2idx=word2idx, bert_tokenizer=tokenizer)
 
 if __name__ == '__main__':
-    # main()
-    lexical_parameter_search()
+    main()
+    # lexical_parameter_search()
