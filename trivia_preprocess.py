@@ -3,6 +3,7 @@ import random
 import os
 from torch.nn.utils.rnn import *
 import numpy as np
+import torch.nn.functional as F
 
 # ------------------
 # read and write data
@@ -298,6 +299,7 @@ def compute_lexical_similarity(config, query, paragraph, query_to_para_idx):
         para_vector = torch.FloatTensor(que_para_vector[1:].toarray()).to(config['device'])
         sim = torch.mm(que_vector, para_vector.transpose(0, 1)).squeeze()
         sim /= torch.sum(sim)   # normalize
+        # sim = F.softmax(sim, dim=-1)
         lexical_sim.append(sim)
     return lexical_sim
 

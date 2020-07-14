@@ -39,13 +39,14 @@ def set_config(embed_method='glove'):
         'k': [1, 3, 5]
     }
 
-def glove_train(config, train_dataloader, dev_dataloader):
+def glove_train(config):
     # Glove loading
     word2idx, word_embed = tp.read_glove(config['glove_path'])
 
     # model setting
     model = SentSelector(config, word_embed=word_embed)
     if os.path.exists(config['model_load_path']) and config['is_load_model']:
+        print('begin to load model:', config['model_load_path'])
         model.load_state_dict(torch.load(config['model_load_path']))
 
     # optimizer setting
@@ -53,10 +54,9 @@ def glove_train(config, train_dataloader, dev_dataloader):
     parameters = filter(lambda p: p.requires_grad, model.parameters())
     optimizer = optim.Adam(parameters)
 
-    # training and predict
-    train.train(config, train_dataloader, dev_dataloader, model, optimizer, word2idx=word2idx)
+    return model, optimizer, word2idx, None
 
-def bert_train(config, train_dataloader, dev_dataloader):
+def bert_train(config):
     """ use Bert's embeddings """
 
     # bert info
@@ -74,7 +74,7 @@ def bert_train(config, train_dataloader, dev_dataloader):
     parameters = filter(lambda p: p.requires_grad, model.parameters())
     optimizer = optim.Adam(parameters)
 
-    train.train(config, train_dataloader, dev_dataloader, model, optimizer, bert_tokenizer=tokenizer)
+    return model, optimizer, None, tokenizer
 
 def lexical_parameter_search():
     config = set_config(embed_method='bert')
@@ -84,10 +84,12 @@ def lexical_parameter_search():
     dev_dataloader = data.DataLoader(dev_dict_list, batch_size=config['batch_size'], shuffle=False,
                                      collate_fn=lambda x: x)
 
-    for alpha in range(0, 1, 0.1):
-        config['lexical_alpha'] = alpha
-        print('cur alaph:', alpha)
-        bert_train(config, None, dev_dataloader)
+    if config['embed_method'] == 'glove':
+        model, optimizer, word2idx, tokenizer = glove_train(config)
+    elif config['embed_method'] == 'bert':
+        model, optimizer, word2idx, tokenizer = bert_train(config)
+
+    train.alpha_search(config, dev_dataloader, model, word2idx=word2idx, bert_tokenizer=tokenizer)
 
 
 def main():
@@ -102,9 +104,13 @@ def main():
                                        collate_fn=lambda x: x)
 
     if config['embed_method'] == 'glove':
-        glove_train(config, train_dataloader, dev_dataloader)
+        model, optimizer, word2idx, tokenizer = glove_train(config)
     elif config['embed_method'] == 'bert':
-        bert_train(config, train_dataloader, dev_dataloader)
+        model, optimizer, word2idx, tokenizer = bert_train(config)
+
+    # training and predict
+    train.train(config, train_dataloader, dev_dataloader, model, optimizer, word2idx=word2idx, bert_tokenizer=tokenizer)
 
 if __name__ == '__main__':
-    main()
+    # main()
+    lexical_parameter_search()
