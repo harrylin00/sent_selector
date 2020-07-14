@@ -85,5 +85,6 @@ class SentSelector(nn.Module):
             que = query[i].unsqueeze(1).clone()  # [hidden, 1]
             para = paragraph[query_to_para_idx[i] : query_to_para_idx[i + 1]].clone()   #[num, hidden]
             sim = torch.mm(para, que).squeeze()   # [num]
+            sim /= torch.sum(sim)   # normalize, this is used for lexical sim adding (Keep in the same scale)
             similarity.append(sim)
         return similarity

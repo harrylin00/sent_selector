@@ -280,3 +280,24 @@ def bert_tokenize(list_strs, bert_tokenizer):
             tokenized_res = ['']
         res.append(tokenized_res)
     return res
+
+# --------------------
+# Lexical Vectors / Similarity
+# --------------------
+
+def compute_lexical_similarity(config, query, paragraph, query_to_para_idx):
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    lexical_sim = []
+    vectorizer = TfidfVectorizer()
+    for idx, que in enumerate(query):
+        para = [' '.join(para) for para in paragraph[query_to_para_idx[idx]: query_to_para_idx[idx + 1]]] # need a string for vectorizer
+        que_para = [' '.join(que)] + para
+        que_para_vector = vectorizer.fit_transform(que_para)
+
+        que_vector = torch.FloatTensor(que_para_vector[0].toarray()).to(config['device'])
+        para_vector = torch.FloatTensor(que_para_vector[1:].toarray()).to(config['device'])
+        sim = torch.mm(que_vector, para_vector.transpose(0, 1)).squeeze()
+        sim /= torch.sum(sim)   # normalize
+        lexical_sim.append(sim)
+    return lexical_sim
+

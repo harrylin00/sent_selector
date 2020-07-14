@@ -28,7 +28,9 @@ def set_config(embed_method='glove'):
         'dropout': 0.2,
 
         'is_load_model': True,
-        'is_train': True,
+        'is_train': False,
+        'use_lexical': True,
+        'lexical_alpha': 0.5,
         'batch_size': 128,
         'train_epochs': 10,
         'device': torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
@@ -73,6 +75,19 @@ def bert_train(config, train_dataloader, dev_dataloader):
     optimizer = optim.Adam(parameters)
 
     train.train(config, train_dataloader, dev_dataloader, model, optimizer, bert_tokenizer=tokenizer)
+
+def lexical_parameter_search():
+    config = set_config(embed_method='bert')
+    config['is_train'] = False
+
+    dev_dict_list = tp.read_jsonl_to_list_dict(config['dev_data_path'])
+    dev_dataloader = data.DataLoader(dev_dict_list, batch_size=config['batch_size'], shuffle=False,
+                                     collate_fn=lambda x: x)
+
+    for alpha in range(0, 1, 0.1):
+        config['lexical_alpha'] = alpha
+        print('cur alaph:', alpha)
+        bert_train(config, None, dev_dataloader)
 
 
 def main():

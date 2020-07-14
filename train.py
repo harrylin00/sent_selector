@@ -65,11 +65,18 @@ def predict(config, dataloader, model, word2idx=None, bert_tokenizer=None):
         model.eval()
         model.to(config['device'])
         for batch_idx, data in enumerate(dataloader):
+            # List[List[str]], List[List[str]], List[int]
             query, paragraph, labels, query_to_para_idx = tp.get_query_and_paragraph(data, config)
-            query, query_len, paragraph, paragraph_len = tp.get_query_para_tensor(config, query, paragraph,
+            query_tensor, query_len, paragraph_tensor, paragraph_len = tp.get_query_para_tensor(config, query, paragraph,
                                                                                   word2idx=word2idx,
                                                                                   bert_tokenizer=bert_tokenizer)
-            sim = model.predict_forward(query, query_len, paragraph, paragraph_len, query_to_para_idx)   # List[(para_num)]
+            sim = model.predict_forward(query_tensor, query_len, paragraph_tensor, paragraph_len, query_to_para_idx)   # List[(para_num)]
+
+            if config['use_lexical']:    # use lexical information by computing tf-idf values
+                lexical_sim = tp.compute_lexical_similarity(config, query, paragraph, query_to_para_idx)
+                alpha = config['lexical_alpha']
+                sim = [alpha * s + (1 - alpha) * ls for s, ls in zip(sim, lexical_sim)]
+
             similarity.extend(sim)
             total_labels.extend(labels)
     return similarity, total_labels
