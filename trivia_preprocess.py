@@ -244,7 +244,7 @@ def get_query_para_tensor(config, query, paragraphs, word2idx=None, bert_tokeniz
 
     device = config['device']
     if config['use_charCNN']:
-        return query_pad.to(device), query_char_tensor, query_len.to(device),\
+        return query_pad.to(device), query_char_tensor.to(device), query_len.to(device),\
                paragraphs_pad.to(device), paragraph_char_tensor.to(device), paragraphs_len.to(device)
     else:
         return query_pad.to(device), None, query_len.to(device),\
