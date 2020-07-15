@@ -9,7 +9,7 @@ import torch
 import os
 from transformers import BertTokenizer, BertModel, BertConfig
 
-def set_config(embed_method='glove', use_charCNN=False, use_lexical=False):
+def set_config(embed_method='glove', use_charCNN=False, use_lexical=False, aggregate_data=False):
     config = {
         'train_data_path': 'data/TriviaQA-train-web.jsonl',
         'dev_data_path': 'data/TriviaQA-dev-web.jsonl',
@@ -38,13 +38,15 @@ def set_config(embed_method='glove', use_charCNN=False, use_lexical=False):
         'alpha_file': 'alphabet.json',
         'alpha_dict': None, # will be gotten from alpha_file
 
+        'aggregate_data': aggregate_data,
+        'aggregate_data_filepath': ['data/SearchQA.jsonl'],
 
         'is_load_model': True,
         'is_train': True,
-        'batch_size': 4,
+        'batch_size': 64,
         'train_epochs': 10,
         'device': torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
-        'accumulate_step': 16,
+        'accumulate_step': 1,
 
         'k': [1, 3, 5, 10]
     }
@@ -58,6 +60,8 @@ def set_charCNN_config(config):
     alphabet = ''.join(tp.read_alpha_dict(config))
     config['alpha_dict'] = alphabet
     config['cnn_input_size'] = len(alphabet) + 1    # add <pad> char
+    config['batch_size'] = 4    # charCNN will consume a lot of memory
+    config['accumulate_step'] = 16
     return config
 
 def glove_train(config):
@@ -114,7 +118,7 @@ def lexical_parameter_search():
 
 def eval():
     """ eval the model in other dataset except triviaQA"""
-    config = set_config(embed_method='bert', use_charCNN=False, use_lexical=True)
+    config = set_config(embed_method='bert', use_charCNN=False, use_lexical=False)
 
     dict_list = op.read_bioasq('data/BioASQ.jsonl')
     dataloader = data.DataLoader(dict_list, batch_size=config['batch_size'], shuffle=False, collate_fn=lambda x:x)
@@ -124,15 +128,17 @@ def eval():
     elif config['embed_method'] == 'bert':
         model, optimizer, word2idx, tokenizer = bert_train(config)
 
-    similarity, labels = train.predict(config, dataloader=dataloader, model=model, optimizer=optimizer,
+    similarity, labels = train.predict(config, dataloader=dataloader, model=model,
                   word2idx=word2idx, bert_tokenizer=tokenizer)
     train.eval(config, similarity, labels)
 
 def main():
-    config = set_config(embed_method='glove', use_charCNN=True)
+    config = set_config(embed_method='glove', use_charCNN=False, use_lexical=False, aggregate_data=True)
 
     # data loading
     train_dict_list = tp.read_jsonl_to_list_dict(config['train_data_path'])
+    if config['aggregate_data']:
+        train_dict_list.extend(tp.aggregate_data(config))
     train_dataloader = data.DataLoader(train_dict_list, batch_size=config['batch_size'], shuffle=True, collate_fn=lambda x:x)
 
     dev_dict_list = tp.read_jsonl_to_list_dict(config['dev_data_path'])
@@ -148,5 +154,6 @@ def main():
     train.train(config, train_dataloader, dev_dataloader, model, optimizer, word2idx=word2idx, bert_tokenizer=tokenizer)
 
 if __name__ == '__main__':
-    main()
+    # main()
     # lexical_parameter_search()
+    eval()
