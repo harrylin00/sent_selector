@@ -40,12 +40,12 @@ def set_config(embed_method='glove', use_charCNN=False):
 
         'is_load_model': True,
         'is_train': True,
-        'batch_size': 64,
+        'batch_size': 4,
         'train_epochs': 10,
         'device': torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
-        'accumulate_step': 1,
+        'accumulate_step': 16,
 
-        'k': [1, 3, 5]
+        'k': [1, 3, 5, 10]
     }
 
 def set_charCNN_config(config):

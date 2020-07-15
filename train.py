@@ -1,6 +1,7 @@
 import time
 import torch.nn.functional as F
 import torch
+import sys
 
 import trivia_preprocess as tp
 
@@ -44,7 +45,15 @@ def train_epoch(config, dataloader, model, optimizer, word2idx=None, bert_tokeni
         similarity = model.train_forward(query_tensor, query_char_tensor, query_len,
                                          paragraph_tensor, paragraph_char_tensor, paragraph_len,
                                          query_to_para_idx)
-        loss = F.cross_entropy(similarity, labels)
+        
+        try:
+            loss = F.cross_entropy(similarity, labels)
+        except:
+            print('batch_idx:', batch_idx)
+            print('similarity shape:', similarity.shape)
+            print('label shape:', labels.shape)
+            sys.exit(0)
+
         running_loss += loss.item()
         loss.backward()
 

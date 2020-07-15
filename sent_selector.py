@@ -108,7 +108,7 @@ class SentSelector(nn.Module):
 
         query = query.reshape(batch_size, self.hidden_size, 1)
         paragraph = paragraph.reshape(batch_size, -1, self.hidden_size)
-        sim_result = torch.bmm(paragraph, query).squeeze()
+        sim_result = torch.bmm(paragraph, query).squeeze(dim=-1)    # [batch_size, rel+irrel num]
         return sim_result
 
     def predict_compute_similarity(self, query, paragraph, query_to_para_idx):
