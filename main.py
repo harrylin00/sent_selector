@@ -1,4 +1,5 @@
 import trivia_preprocess as tp
+import other_preprocess as op
 from sent_selector import SentSelector
 import train
 
@@ -8,8 +9,8 @@ import torch
 import os
 from transformers import BertTokenizer, BertModel, BertConfig
 
-def set_config(embed_method='glove', use_charCNN=False):
-    return {
+def set_config(embed_method='glove', use_charCNN=False, use_lexical=False):
+    config = {
         'train_data_path': 'data/TriviaQA-train-web.jsonl',
         'dev_data_path': 'data/TriviaQA-dev-web.jsonl',
         'glove_path': 'embeddings/glove.6B.300d.txt',
@@ -27,7 +28,7 @@ def set_config(embed_method='glove', use_charCNN=False):
         'num_layer': 3,
         'dropout': 0.2,
 
-        'use_lexical': False,   # use tf-idf similarity or not
+        'use_lexical': use_lexical,   # use tf-idf similarity or not
         'lexical_alpha': 0.5,
 
         'use_charCNN': use_charCNN,
@@ -47,6 +48,11 @@ def set_config(embed_method='glove', use_charCNN=False):
 
         'k': [1, 3, 5, 10]
     }
+
+    if use_charCNN:
+        config = set_charCNN_config(config)
+
+    return config
 
 def set_charCNN_config(config):
     alphabet = ''.join(tp.read_alpha_dict(config))
@@ -106,6 +112,21 @@ def lexical_parameter_search():
 
     train.alpha_search(config, dev_dataloader, model, word2idx=word2idx, bert_tokenizer=tokenizer)
 
+def eval():
+    """ eval the model in other dataset except triviaQA"""
+    config = set_config(embed_method='bert', use_charCNN=False, use_lexical=True)
+
+    dict_list = op.read_bioasq('data/BioASQ.jsonl')
+    dataloader = data.DataLoader(dict_list, batch_size=config['batch_size'], shuffle=False, collate_fn=lambda x:x)
+
+    if config['embed_method'] == 'glove':
+        model, optimizer, word2idx, tokenizer = glove_train(config)
+    elif config['embed_method'] == 'bert':
+        model, optimizer, word2idx, tokenizer = bert_train(config)
+
+    similarity, labels = train.predict(config, dataloader=dataloader, model=model, optimizer=optimizer,
+                  word2idx=word2idx, bert_tokenizer=tokenizer)
+    train.eval(config, similarity, labels)
 
 def main():
     config = set_config(embed_method='glove', use_charCNN=True)
@@ -117,9 +138,6 @@ def main():
     dev_dict_list = tp.read_jsonl_to_list_dict(config['dev_data_path'])
     dev_dataloader = data.DataLoader(dev_dict_list, batch_size=config['batch_size'], shuffle=False,
                                        collate_fn=lambda x: x)
-
-    if config['use_charCNN']:
-        config = set_charCNN_config(config)
 
     if config['embed_method'] == 'glove':
         model, optimizer, word2idx, tokenizer = glove_train(config)

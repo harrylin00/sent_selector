@@ -1,4 +1,5 @@
 import trivia_preprocess as tp
+import other_preprocess as op
 
 from collections import defaultdict
 import math
@@ -74,15 +75,19 @@ def get_labels(dict_list):
     return [[1] * len(dict['relevant']) + [0] * len(dict['irrelevant']) for dict in dict_list]
 
 def main():
-    dev_data_path = 'data/TriviaQA-dev-web.jsonl'
+    # dev_data_path = 'data/TriviaQA-dev-web.jsonl'
+    # dict_list = tp.read_jsonl_to_list_dict(dev_data_path)
 
-    dict_list = tp.read_jsonl_to_list_dict(dev_data_path)
+    dev_data_path = 'data/BioASQ.jsonl'
+    dict_list = op.read_bioasq(dev_data_path)
+
     pmi_score = compute_pmi(dict_list)
     labels = get_labels(dict_list)
-    ks = [1, 3, 5]
+    ks = [1, 3, 5, 10]
     for k in ks:
         accuracy = tp.eval_topk(pmi_score, labels, k=k)
-        print('pmi top', k,':', accuracy)
+        precision = tp.eval_precision_topk(pmi_score, labels, k=k)
+        print('pmi top', k,'accuracy: ', accuracy, 'precision: ', precision)
 
 if __name__ == '__main__':
     main()
