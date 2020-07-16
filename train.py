@@ -69,6 +69,7 @@ def train_epoch(config, dataloader, model, optimizer, word2idx=None, bert_tokeni
 #------------------------
 
 def predict(config, dataloader, model, word2idx=None, bert_tokenizer=None):
+    print('begin to predict')
     similarity = []
     total_labels = []
 

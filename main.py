@@ -118,9 +118,10 @@ def lexical_parameter_search():
 
 def eval():
     """ eval the model in other dataset except triviaQA"""
-    config = set_config(embed_method='bert', use_charCNN=False, use_lexical=False)
+    config = set_config(embed_method='bert', use_charCNN=False, use_lexical=True)
 
-    dict_list = op.read_bioasq('data/BioASQ.jsonl')
+    dict_list = tp.read_jsonl_to_list_dict('data/SearchQA-dev.jsonl')
+    # dict_list = op.read_natural_question('data/NaturalQuestionsShort-dev.jsonl')
     dataloader = data.DataLoader(dict_list, batch_size=config['batch_size'], shuffle=False, collate_fn=lambda x:x)
 
     if config['embed_method'] == 'glove':
@@ -154,6 +155,6 @@ def main():
     train.train(config, train_dataloader, dev_dataloader, model, optimizer, word2idx=word2idx, bert_tokenizer=tokenizer)
 
 if __name__ == '__main__':
-    main()
+    # main()
     # lexical_parameter_search()
-    # eval()
+    eval()
