@@ -39,7 +39,7 @@ def set_config(embed_method='glove', use_charCNN=False, use_lexical=False, aggre
         'alpha_dict': None, # will be gotten from alpha_file
 
         'aggregate_data': aggregate_data,
-        'aggregate_data_filepath': ['data/SearchQA.jsonl'],
+        'aggregate_data_filepath': ['data/BioASQ.jsonl', 'data/SearchQA.jsonl'],
 
         'is_load_model': True,
         'is_train': True,
@@ -154,6 +154,6 @@ def main():
     train.train(config, train_dataloader, dev_dataloader, model, optimizer, word2idx=word2idx, bert_tokenizer=tokenizer)
 
 if __name__ == '__main__':
-    # main()
+    main()
     # lexical_parameter_search()
-    eval()
+    # eval()

@@ -77,9 +77,8 @@ def get_labels(dict_list):
 def main():
     # dev_data_path = 'data/TriviaQA-dev-web.jsonl'
     # dict_list = tp.read_jsonl_to_list_dict(dev_data_path)
-
-    dev_data_path = 'data/BioASQ.jsonl'
-    dict_list = op.read_bioasq(dev_data_path)
+    dev_data_path = 'data/NaturalQuestionsShort.jsonl'
+    dict_list = op.read_natural_question(dev_data_path)
 
     pmi_score = compute_pmi(dict_list)
     labels = get_labels(dict_list)

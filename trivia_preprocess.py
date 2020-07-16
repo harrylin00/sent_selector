@@ -3,6 +3,7 @@ import random
 import os
 from torch.nn.utils.rnn import *
 import numpy as np
+import other_preprocess as op
 import torch.nn.functional as F
 
 # ------------------
@@ -20,6 +21,7 @@ def read_jsonl_to_list_dict(filepath):
     print('begin to read jsonl files: ', filepath)
 
     data_dict = []
+    discard_num = 0
 
     with open(filepath, 'r') as f:
         for i, line in enumerate(f):
@@ -79,7 +81,23 @@ def read_jsonl_to_list_dict(filepath):
 
                 if len(cur_dict['relevant']) > 0 and len(cur_dict['irrelevant']) > 0:
                     data_dict.append(cur_dict)
+                else:
+                    discard_num += 1
+    print('discard number:', discard_num)
+    return data_dict
 
+def aggregate_data(config):
+    data_dict = []
+    data_filepath = config['aggregate_data_filepath']
+    for d_file in data_filepath:
+        if 'BioASQ' in d_file:
+            data_dict.extend(op.read_bioasq(d_file))
+        elif 'SearchQA' in d_file:
+            data_dict.extend(read_jsonl_to_list_dict(d_file))
+        elif 'NaturalQuestion' in d_file:
+            data_dict.extend(op.read_natural_question(d_file))
+        else:
+            print('No such file found:', d_file)
     return data_dict
 
 # ------------------
