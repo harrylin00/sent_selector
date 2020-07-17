@@ -7,15 +7,15 @@ import torch.utils.data as data
 import torch.optim as optim
 import torch
 import os
-from transformers import BertTokenizer, BertModel, BertConfig
+from transformers import BertTokenizer, BertModel, BertConfig, BertTokenizerFast
 
 def set_config(embed_method='glove', use_charCNN=False, use_lexical=False, aggregate_data=False):
     config = {
         'train_data_path': 'data/TriviaQA-train-web.jsonl',
         'dev_data_path': 'data/TriviaQA-dev-web.jsonl',
         'glove_path': 'embeddings/glove.6B.300d.txt',
-        'model_write_path': 'lstm_'+embed_method+'.pt' if not use_charCNN else 'cnn_lstm_'+embed_method+'.pt',
-        'model_load_path': 'lstm_'+embed_method+'.pt'  if not use_charCNN else 'cnn_lstm_'+embed_method+'.pt',
+        'model_write_path': 'lstm_'+embed_method+'.pt' if not aggregate_data else 'agg_lstm_'+embed_method+'.pt',
+        'model_load_path': 'lstm_'+embed_method+'.pt'  if not aggregate_data else 'agg_lstm_'+embed_method+'.pt',
 
         'embed_method': embed_method,
         'bert_config': 'bert-base-uncased',
@@ -39,7 +39,10 @@ def set_config(embed_method='glove', use_charCNN=False, use_lexical=False, aggre
         'alpha_dict': None, # will be gotten from alpha_file
 
         'aggregate_data': aggregate_data,
-        'aggregate_data_filepath': ['data/BioASQ.jsonl', 'data/SearchQA.jsonl'],
+        'aggregate_data_filepath': ['data/BioASQ.jsonl',
+                                    'data/SearchQA-train.jsonl',
+                                    'data/NaturalQuestionsShort-train.jsonl', 
+                                    'data/NewsQA-train.jsonl'],
 
         'is_load_model': True,
         'is_train': True,
@@ -62,6 +65,8 @@ def set_charCNN_config(config):
     config['cnn_input_size'] = len(alphabet) + 1    # add <pad> char
     config['batch_size'] = 4    # charCNN will consume a lot of memory
     config['accumulate_step'] = 16
+    config['model_write_path'] = 'cnn_' + config['model_write_path']
+    config['model_load_path'] = 'cnn_' + config['model_load_path']
     return config
 
 def glove_train(config):
@@ -86,6 +91,7 @@ def bert_train(config):
 
     # bert info
     tokenizer = BertTokenizer.from_pretrained(config['bert_config'])
+    # tokenizer = BertTokenizerFast.from_pretrained(config['bert_config'])
     bert_config = BertConfig().from_pretrained(config['bert_config'])
     word_embed = BertModel.from_pretrained(config['bert_config']).get_input_embeddings()
 
@@ -134,7 +140,7 @@ def eval():
     train.eval(config, similarity, labels)
 
 def main():
-    config = set_config(embed_method='glove', use_charCNN=False, use_lexical=False, aggregate_data=True)
+    config = set_config(embed_method='bert', use_charCNN=False, use_lexical=False, aggregate_data=True)
 
     # data loading
     train_dict_list = tp.read_jsonl_to_list_dict(config['train_data_path'])
@@ -155,6 +161,6 @@ def main():
     train.train(config, train_dataloader, dev_dataloader, model, optimizer, word2idx=word2idx, bert_tokenizer=tokenizer)
 
 if __name__ == '__main__':
-    # main()
+    main()
     # lexical_parameter_search()
-    eval()
+    # eval()

@@ -96,6 +96,8 @@ def aggregate_data(config):
             data_dict.extend(read_jsonl_to_list_dict(d_file))
         elif 'NaturalQuestion' in d_file:
             data_dict.extend(op.read_natural_question(d_file))
+        elif 'News' in d_file:
+            data_dict.extend(op.read_news(d_file))
         else:
             print('No such file found:', d_file)
     return data_dict
