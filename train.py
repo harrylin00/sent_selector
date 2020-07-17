@@ -45,14 +45,8 @@ def train_epoch(config, dataloader, model, optimizer, word2idx=None, bert_tokeni
         similarity = model.train_forward(query_tensor, query_char_tensor, query_len,
                                          paragraph_tensor, paragraph_char_tensor, paragraph_len,
                                          query_to_para_idx)
-        
-        try:
-            loss = F.cross_entropy(similarity, labels)
-        except:
-            print('batch_idx:', batch_idx)
-            print('similarity shape:', similarity.shape)
-            print('label shape:', labels.shape)
-            sys.exit(0)
+
+        loss = F.cross_entropy(similarity, labels)
 
         running_loss += loss.item()
         loss.backward()
@@ -73,6 +67,8 @@ def predict(config, dataloader, model, word2idx=None, bert_tokenizer=None):
     similarity = []
     total_labels = []
 
+    start = time.time()
+    exp_num = 0
     with torch.no_grad():
         model.eval()
         model.to(config['device'])
@@ -93,6 +89,12 @@ def predict(config, dataloader, model, word2idx=None, bert_tokenizer=None):
 
             similarity.extend(sim)
             total_labels.extend(labels)
+
+            exp_num += len(paragraph_len)
+
+    end = time.time()
+    print('Infer time per (query, doc) pair:', (end - start) / exp_num, 's')
+    print('Inter time per query:', (end - time) / len(similarity), 's')
     return similarity, total_labels
 
 #------------------------

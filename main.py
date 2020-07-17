@@ -1,6 +1,7 @@
 import trivia_preprocess as tp
 import other_preprocess as op
 from sent_selector import SentSelector
+from esim import ESIM
 import train
 
 import torch.utils.data as data
@@ -9,7 +10,7 @@ import torch
 import os
 from transformers import BertTokenizer, BertModel, BertConfig, BertTokenizerFast
 
-def set_config(embed_method='glove', use_charCNN=False, use_lexical=False, aggregate_data=False):
+def set_config(embed_method='glove', use_charCNN=False, use_lexical=False, aggregate_data=False, use_esim=False):
     config = {
         'train_data_path': 'data/TriviaQA-train-web.jsonl',
         'dev_data_path': 'data/TriviaQA-dev-web.jsonl',
@@ -44,8 +45,11 @@ def set_config(embed_method='glove', use_charCNN=False, use_lexical=False, aggre
                                     'data/NaturalQuestionsShort-train.jsonl', 
                                     'data/NewsQA-train.jsonl'],
 
+        'use_esim': use_esim,
+        'linear_size': 256,
+
         'is_load_model': True,
-        'is_train': True,
+        'is_train': False,
         'batch_size': 64,
         'train_epochs': 10,
         'device': torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
@@ -74,7 +78,10 @@ def glove_train(config):
     word2idx, word_embed = tp.read_glove(config['glove_path'])
 
     # model setting
-    model = SentSelector(config, word_embed=word_embed)
+    if config['use_esim']:
+        model = ESIM(config, word_embed=word_embed)
+    else:
+        model = SentSelector(config, word_embed=word_embed)
     if os.path.exists(config['model_load_path']) and config['is_load_model']:
         print('begin to load model:', config['model_load_path'])
         model.load_state_dict(torch.load(config['model_load_path']))
@@ -95,7 +102,10 @@ def bert_train(config):
     bert_config = BertConfig().from_pretrained(config['bert_config'])
     word_embed = BertModel.from_pretrained(config['bert_config']).get_input_embeddings()
 
-    model = SentSelector(config, word_embed=word_embed, bert_config=bert_config)
+    if config['use_esim']:
+        model = ESIM(config, word_embed=word_embed, bert_config=bert_config)
+    else:
+        model = SentSelector(config, word_embed=word_embed, bert_config=bert_config)
     if os.path.exists(config['model_load_path']) and config['is_load_model']:
         print('begin to load model:', config['model_load_path'])
         model.load_state_dict(torch.load(config['model_load_path']))
@@ -139,6 +149,22 @@ def eval():
                   word2idx=word2idx, bert_tokenizer=tokenizer)
     train.eval(config, similarity, labels)
 
+def debug_main():
+    config = set_config(embed_method='glove', use_esim=True)
+
+    # data loading
+    dev_dict_list = tp.read_jsonl_to_list_dict(config['dev_data_path'])
+    dev_dataloader = data.DataLoader(dev_dict_list, batch_size=config['batch_size'], shuffle=False,
+                                     collate_fn=lambda x: x)
+
+    if config['embed_method'] == 'glove':
+        model, optimizer, word2idx, tokenizer = glove_train(config)
+    elif config['embed_method'] == 'bert':
+        model, optimizer, word2idx, tokenizer = bert_train(config)
+
+    # training and predict
+    train.train(config, dev_dataloader, dev_dataloader, model, optimizer, word2idx=word2idx, bert_tokenizer=tokenizer)
+
 def main():
     config = set_config(embed_method='bert', use_charCNN=False, use_lexical=False, aggregate_data=True)
 
@@ -161,6 +187,7 @@ def main():
     train.train(config, train_dataloader, dev_dataloader, model, optimizer, word2idx=word2idx, bert_tokenizer=tokenizer)
 
 if __name__ == '__main__':
-    main()
+    # main()
     # lexical_parameter_search()
     # eval()
+    debug_main()

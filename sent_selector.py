@@ -36,6 +36,7 @@ class SentSelector(nn.Module):
         self.para_encoder = nn.LSTM(self.input_size, self.hidden_size, num_layers=self.num_layer,
                                      batch_first=True, dropout=self.dropout_prob, bidirectional=True)
 
+
     def train_forward(self, query, query_char, query_len, paragraph, paragraph_char, paragraph_len, query_to_para_idx):
         """
         It is the same with predict_forward
@@ -49,14 +50,14 @@ class SentSelector(nn.Module):
         :return:
         """
 
-        query_hidden = self.encode_query(query, query_char, query_len)
-        paragraph_hidden = self.encode_paragraph(paragraph, paragraph_char, paragraph_len)
+        query_hidden, query_out = self.encode_query(query, query_char, query_len)   # out: [batch, seq_len, hidden]
+        paragraph_hidden, paragraph_out = self.encode_paragraph(paragraph, paragraph_char, paragraph_len)   #[ir+re * batch, seq_len, hidden]
         similarity = self.compute_similarity(query_hidden, paragraph_hidden)
         return similarity
 
     def predict_forward(self, query, query_char, query_len, paragraph, paragraph_char, paragraph_len, query_to_para_idx):
-        query_hidden = self.encode_query(query, query_char, query_len)
-        paragraph_hidden = self.encode_paragraph(paragraph, paragraph_char, paragraph_len)
+        query_hidden, query_out = self.encode_query(query, query_char, query_len)
+        paragraph_hidden, paragraph_out = self.encode_paragraph(paragraph, paragraph_char, paragraph_len)
         similarity = self.predict_compute_similarity(query_hidden, paragraph_hidden, query_to_para_idx)
         return similarity
 
@@ -100,6 +101,9 @@ class SentSelector(nn.Module):
         h = h.view(self.num_layer, -1, batch_size, self.hidden_size).permute(0, 2, 1, 3)[-1].reshape(batch_size, -1)
         para_hidden = torch.tanh(h)
         para_hidden = self.para_linear(para_hidden)
+
+        # get last layer's out for attention
+        # out, out_lens = pad_packed_sequence(out, batch_first=True)  # [batch, seq_len, hidden * bidirection]
         return para_hidden
 
     def compute_similarity(self, query, paragraph):
