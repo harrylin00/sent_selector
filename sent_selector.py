@@ -50,14 +50,14 @@ class SentSelector(nn.Module):
         :return:
         """
 
-        query_hidden, query_out = self.encode_query(query, query_char, query_len)   # out: [batch, seq_len, hidden]
-        paragraph_hidden, paragraph_out = self.encode_paragraph(paragraph, paragraph_char, paragraph_len)   #[ir+re * batch, seq_len, hidden]
+        query_hidden= self.encode_query(query, query_char, query_len)   # out: [batch, seq_len, hidden]
+        paragraph_hidden = self.encode_paragraph(paragraph, paragraph_char, paragraph_len)   #[ir+re * batch, seq_len, hidden]
         similarity = self.compute_similarity(query_hidden, paragraph_hidden)
         return similarity
 
     def predict_forward(self, query, query_char, query_len, paragraph, paragraph_char, paragraph_len, query_to_para_idx):
-        query_hidden, query_out = self.encode_query(query, query_char, query_len)
-        paragraph_hidden, paragraph_out = self.encode_paragraph(paragraph, paragraph_char, paragraph_len)
+        query_hidden = self.encode_query(query, query_char, query_len)
+        paragraph_hidden = self.encode_paragraph(paragraph, paragraph_char, paragraph_len)
         similarity = self.predict_compute_similarity(query_hidden, paragraph_hidden, query_to_para_idx)
         return similarity
 

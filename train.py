@@ -94,7 +94,7 @@ def predict(config, dataloader, model, word2idx=None, bert_tokenizer=None):
 
     end = time.time()
     print('Infer time per (query, doc) pair:', (end - start) / exp_num, 's')
-    print('Inter time per query:', (end - time) / len(similarity), 's')
+    print('Inter time per query:', (end - start) / len(similarity), 's')
     return similarity, total_labels
 
 #------------------------

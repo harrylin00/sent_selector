@@ -49,7 +49,7 @@ def set_config(embed_method='glove', use_charCNN=False, use_lexical=False, aggre
         'linear_size': 256,
 
         'is_load_model': True,
-        'is_train': False,
+        'is_train': True,
         'batch_size': 64,
         'train_epochs': 10,
         'device': torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
@@ -58,6 +58,9 @@ def set_config(embed_method='glove', use_charCNN=False, use_lexical=False, aggre
         'k': [1, 3, 5, 10]
     }
 
+    if use_esim:
+        config['model_load_path'] = config['model_load_path'].replace('lstm', 'esim')
+        config['model_write_path'] = config['model_write_path'].replace('lstm', 'esim')
     if use_charCNN:
         config = set_charCNN_config(config)
 
@@ -166,7 +169,7 @@ def debug_main():
     train.train(config, dev_dataloader, dev_dataloader, model, optimizer, word2idx=word2idx, bert_tokenizer=tokenizer)
 
 def main():
-    config = set_config(embed_method='bert', use_charCNN=False, use_lexical=False, aggregate_data=True)
+    config = set_config(embed_method='glove', use_charCNN=False, use_lexical=False, aggregate_data=False, use_esim=True)
 
     # data loading
     train_dict_list = tp.read_jsonl_to_list_dict(config['train_data_path'])
@@ -187,7 +190,7 @@ def main():
     train.train(config, train_dataloader, dev_dataloader, model, optimizer, word2idx=word2idx, bert_tokenizer=tokenizer)
 
 if __name__ == '__main__':
-    # main()
+    main()
     # lexical_parameter_search()
     # eval()
-    debug_main()
+    # debug_main()
