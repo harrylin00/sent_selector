@@ -10,10 +10,16 @@ import torch
 import os
 from transformers import BertTokenizer, BertModel, BertConfig, BertTokenizerFast
 
-def set_config(embed_method='glove', use_charCNN=False, use_lexical=False, aggregate_data=False, use_esim=False):
+def set_config(embed_method='glove',
+               use_charCNN=False,
+               use_lexical=False,
+               aggregate_data=False,
+               use_esim=False,
+               is_train=True):
     config = {
         'train_data_path': 'data/TriviaQA-train-web.jsonl',
         'dev_data_path': 'data/TriviaQA-dev-web.jsonl',
+        'dev_debug_data_path': 'data/TriviaQA-dev-small-web.jsonl',
         'glove_path': 'embeddings/glove.6B.300d.txt',
         'model_write_path': 'lstm_'+embed_method+'.pt' if not aggregate_data else 'agg_lstm_'+embed_method+'.pt',
         'model_load_path': 'lstm_'+embed_method+'.pt'  if not aggregate_data else 'agg_lstm_'+embed_method+'.pt',
@@ -49,7 +55,7 @@ def set_config(embed_method='glove', use_charCNN=False, use_lexical=False, aggre
         'linear_size': 256,
 
         'is_load_model': True,
-        'is_train': True,
+        'is_train': is_train,
         'batch_size': 64,
         'train_epochs': 10,
         'device': torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
@@ -153,10 +159,10 @@ def eval():
     train.eval(config, similarity, labels)
 
 def debug_main():
-    config = set_config(embed_method='glove', use_esim=True)
+    config = set_config(embed_method='bert', use_esim=False, is_train=False)
 
     # data loading
-    dev_dict_list = tp.read_jsonl_to_list_dict(config['dev_data_path'])
+    dev_dict_list = tp.read_jsonl_to_list_dict(config['dev_debug_data_path'])
     dev_dataloader = data.DataLoader(dev_dict_list, batch_size=config['batch_size'], shuffle=False,
                                      collate_fn=lambda x: x)
 
@@ -190,7 +196,7 @@ def main():
     train.train(config, train_dataloader, dev_dataloader, model, optimizer, word2idx=word2idx, bert_tokenizer=tokenizer)
 
 if __name__ == '__main__':
-    main()
+    # main()
     # lexical_parameter_search()
     # eval()
-    # debug_main()
+    debug_main()

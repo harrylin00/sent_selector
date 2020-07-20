@@ -67,8 +67,8 @@ class ESIM(nn.Module):
             pq_atten = pq_attention[batch_idx]  #[(ir+re), q_seq, p_seq]
             q_mask = query_mask[batch_idx].expand(p_seq_len, q_seq_len)
             p_mask = paragraph_mask[batch_idx].expand(q_seq_len, sub_batch, p_seq_len).permute(1, 0, 2)  # [sub_batch, q_seq, p_seq_len]
-            p_out_align = torch.bmm(F.softmax(pq_atten.permute(0, 2, 1).masked_fill(q_mask, value=float('-inf')), dim=-1), q_out)
-            q_out_align = torch.bmm(F.softmax(pq_atten.masked_fill(p_mask, value=float('-inf')), dim=-1), p_out)
+            p_out_align = torch.bmm(F.softmax(pq_atten.permute(0, 2, 1).masked_fill(q_mask, value=-1000), dim=-1), q_out)
+            q_out_align = torch.bmm(F.softmax(pq_atten.masked_fill(p_mask, value=-1000), dim=-1), p_out)
 
             # concatenate all info: [encoding, attention based, element-wise, difference]
             p_combine = torch.cat([p_out, p_out_align, p_out * p_out_align, p_out - p_out_align], dim=-1)
