@@ -82,6 +82,17 @@ def set_charCNN_config(config):
     config['model_load_path'] = 'cnn_' + config['model_load_path']
     return config
 
+def load_model_and_optim(config, model):
+    if os.path.exists(config['model_load_path']) and config['is_load_model']:
+        print('begin to load model:', config['model_load_path'])
+        model.load_state_dict(torch.load(config['model_load_path'], map_location=config['device']))
+
+    # optimizer setting
+    # When using bert, we will freeze the word embeddings so we should filter it out before feeding into the optimizer
+    parameters = filter(lambda p: p.requires_grad, model.parameters())
+    optimizer = optim.Adam(parameters)
+    return model, optimizer
+
 def glove_train(config):
     # Glove loading
     word2idx, word_embed = tp.read_glove(config['glove_path'])
@@ -91,14 +102,8 @@ def glove_train(config):
         model = ESIM(config, word_embed=word_embed)
     else:
         model = SentSelector(config, word_embed=word_embed)
-    if os.path.exists(config['model_load_path']) and config['is_load_model']:
-        print('begin to load model:', config['model_load_path'])
-        model.load_state_dict(torch.load(config['model_load_path']))
 
-    # optimizer setting
-    # When using bert, we will freeze the word embeddings so we should filter it out before feeding into the optimizer
-    parameters = filter(lambda p: p.requires_grad, model.parameters())
-    optimizer = optim.Adam(parameters)
+    model, optimizer = load_model_and_optim(config, model)
 
     return model, optimizer, word2idx, None
 
@@ -115,14 +120,8 @@ def bert_train(config):
         model = ESIM(config, word_embed=word_embed, bert_config=bert_config)
     else:
         model = SentSelector(config, word_embed=word_embed, bert_config=bert_config)
-    if os.path.exists(config['model_load_path']) and config['is_load_model']:
-        print('begin to load model:', config['model_load_path'])
-        model.load_state_dict(torch.load(config['model_load_path']))
 
-    # optimizer setting
-    # When using bert, we will freeze the word embeddings so we should filter it out before feeding into the optimizer
-    parameters = filter(lambda p: p.requires_grad, model.parameters())
-    optimizer = optim.Adam(parameters)
+    model, optimizer = load_model_and_optim(config, model)
 
     return model, optimizer, None, tokenizer
 
@@ -159,7 +158,7 @@ def eval():
     train.eval(config, similarity, labels)
 
 def debug_main():
-    config = set_config(embed_method='bert', use_esim=False, is_train=False)
+    config = set_config(embed_method='glove', use_esim=True, is_train=True)
 
     # data loading
     dev_dict_list = tp.read_jsonl_to_list_dict(config['dev_debug_data_path'])

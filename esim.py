@@ -48,15 +48,15 @@ class ESIM(nn.Module):
         paragraph_out = self.encode_paragraph(paragraph, paragraph_char, paragraph_len)  # [ir+re * batch, seq_len, hidden]
 
         (batch_size, q_seq_len, hidden_size), p_seq_len = query_out.shape, paragraph_out.size(1)
-        paragraph_out = paragraph_out.reshape(batch_size, -1, hidden_size)   #[batch, seq_len * (ir+re), hidden]
-        pq_attention = torch.bmm(query_out, paragraph_out.transpose(1, 2))\
-            .reshape(batch_size, q_seq_len, p_seq_len, -1)\
-            .permute(0, 3, 1, 2)  # [batch, (ir+re), q_seq_len, p_seq_len]
+        paragraph_out = paragraph_out.reshape(batch_size, -1, p_seq_len, hidden_size)   #[batch, (ir+re), seq_len, hidden]
+        # pq_attention = torch.bmm(query_out, paragraph_out.transpose(1, 2))\
+        #     .reshape(batch_size, q_seq_len, p_seq_len, -1)\
+        #     .permute(0, 3, 1, 2)  # [batch, (ir+re), q_seq_len, p_seq_len]
 
         query_mask = query.eq(0)    # [batch, q_seq]
         paragraph_mask = paragraph.eq(0).reshape(batch_size, -1, p_seq_len)   #[batch, (re+ir), p_seq_len]
 
-        similarity = torch.zeros((batch_size, pq_attention.size(1))).to(self.config['device'])
+        similarity = torch.zeros((batch_size, paragraph_out.size(1))).to(self.config['device'])
         for batch_idx in range(batch_size):
             # [ir+re, seq_len, hidden]
             p_out = paragraph_out[batch_idx].reshape(-1, p_seq_len, hidden_size)
@@ -64,9 +64,11 @@ class ESIM(nn.Module):
             sub_batch = p_out.size(0)
 
             # compute attention based vector
-            pq_atten = pq_attention[batch_idx]  #[(ir+re), q_seq, p_seq]
-            q_mask = query_mask[batch_idx].expand(p_seq_len, q_seq_len)
-            p_mask = paragraph_mask[batch_idx].expand(q_seq_len, sub_batch, p_seq_len).permute(1, 0, 2)  # [sub_batch, q_seq, p_seq_len]
+            pq_atten = torch.bmm(q_out, p_out.transpose(1, 2))  #[(ir+re), q_seq, p_seq]
+            q_mask = query_mask[batch_idx].repeat(p_seq_len, 1)
+            p_mask = paragraph_mask[batch_idx].repeat(q_seq_len, 1, 1).permute(1, 0, 2)
+            # q_mask = query_mask[batch_idx].expand(p_seq_len, q_seq_len)
+            # p_mask = paragraph_mask[batch_idx].expand(q_seq_len, sub_batch, p_seq_len).permute(1, 0, 2)  # [sub_batch, q_seq, p_seq_len]
             p_out_align = torch.bmm(F.softmax(pq_atten.permute(0, 2, 1).masked_fill(q_mask, value=-1000), dim=-1), q_out)
             q_out_align = torch.bmm(F.softmax(pq_atten.masked_fill(p_mask, value=-1000), dim=-1), p_out)
 
