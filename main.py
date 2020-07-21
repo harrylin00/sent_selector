@@ -195,7 +195,7 @@ def main():
     train.train(config, train_dataloader, dev_dataloader, model, optimizer, word2idx=word2idx, bert_tokenizer=tokenizer)
 
 if __name__ == '__main__':
-    # main()
+    main()
     # lexical_parameter_search()
     # eval()
-    debug_main()
+    # debug_main()

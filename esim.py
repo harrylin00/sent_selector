@@ -101,12 +101,15 @@ class ESIM(nn.Module):
 
             # compute attention based vector
             pq_atten = torch.bmm(q_out, p_out.transpose(-1, -2))    #[ire+re, q_seq, p_seq]
-            q_mask = query[batch_idx].eq(0).expand(p_seq_len, q_seq_len)
+            q_mask = query[batch_idx].eq(0).repeat(p_seq_len, 1)
             p_mask = paragraph[query_to_para_idx[batch_idx] : query_to_para_idx[batch_idx + 1]].eq(0)\
-                .expand(q_seq_len, sub_batch, p_seq_len).permute(1, 0, 2)   #[ire+re, q_seq, p_len]
+                .repeat(q_seq_len, 1, 1).permute(1, 0, 2)
+            # q_mask = query[batch_idx].eq(0).expand(p_seq_len, q_seq_len)
+            # p_mask = paragraph[query_to_para_idx[batch_idx] : query_to_para_idx[batch_idx + 1]].eq(0)\
+            #     .expand(q_seq_len, sub_batch, p_seq_len).permute(1, 0, 2)   #[ire+re, q_seq, p_len]
             p_out_align = torch.bmm(
-                F.softmax(pq_atten.permute(0, 2, 1).masked_fill(q_mask, value=float('-inf')), dim=-1), q_out)
-            q_out_align = torch.bmm(F.softmax(pq_atten.masked_fill(p_mask, value=float('-inf')), dim=-1), p_out)
+                F.softmax(pq_atten.permute(0, 2, 1).masked_fill(q_mask, value=-1000), dim=-1), q_out)
+            q_out_align = torch.bmm(F.softmax(pq_atten.masked_fill(p_mask, value=-1000), dim=-1), p_out)
 
             # concatenate all info: [encoding, attention based, element-wise, difference]
             p_combine = torch.cat([p_out, p_out_align, p_out * p_out_align, p_out - p_out_align], dim=-1)
