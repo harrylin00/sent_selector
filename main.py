@@ -3,6 +3,7 @@ import other_preprocess as op
 from sent_selector import SentSelector
 from esim import ESIM
 import train
+import pmi
 
 import torch.utils.data as data
 import torch.optim as optim
@@ -126,7 +127,7 @@ def bert_train(config):
     return model, optimizer, None, tokenizer
 
 def lexical_parameter_search():
-    config = set_config(embed_method='bert')
+    config = set_config(embed_method='glove', aggregate_data=True)
     config['is_train'] = False
 
     dev_dict_list = tp.read_jsonl_to_list_dict(config['dev_data_path'])
@@ -138,7 +139,11 @@ def lexical_parameter_search():
     elif config['embed_method'] == 'bert':
         model, optimizer, word2idx, tokenizer = bert_train(config)
 
-    train.alpha_search(config, dev_dataloader, model, word2idx=word2idx, bert_tokenizer=tokenizer)
+    # compute pmi score
+    pmi_similarity = pmi.compute_pmi(dev_dict_list)
+    pmi_similarity = [torch.FloatTensor(sim).to(config['device']) for sim in pmi_similarity]
+
+    train.alpha_search(config, dev_dataloader, model, word2idx=word2idx, bert_tokenizer=tokenizer, pmi_similarity=pmi_similarity)
 
 def eval():
     """ eval the model in other dataset except triviaQA"""
@@ -195,7 +200,7 @@ def main():
     train.train(config, train_dataloader, dev_dataloader, model, optimizer, word2idx=word2idx, bert_tokenizer=tokenizer)
 
 if __name__ == '__main__':
-    main()
-    # lexical_parameter_search()
+    # main()
+    lexical_parameter_search()
     # eval()
     # debug_main()

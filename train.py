@@ -115,7 +115,7 @@ def eval(config, similarity, labels):
 # Hyperparameter search
 #------------------------
 
-def alpha_search(config, dataloader, model, word2idx=None, bert_tokenizer=None):
+def alpha_search(config, dataloader, model, word2idx=None, bert_tokenizer=None, pmi_similarity=None):
     total_labels = []
     model_similarity = []
     lexical_similarity = []
@@ -138,11 +138,20 @@ def alpha_search(config, dataloader, model, word2idx=None, bert_tokenizer=None):
             total_labels.extend(labels)
             lexical_similarity.extend(lexical_sim)
 
+    print('TF-IDF Lexical Alpha Search...')
     for alpha in range(11):
         alpha /= 10         # range only support int
         final_sim = [alpha * s + (1 - alpha) * ls for s, ls in zip(model_similarity, lexical_similarity)]
         print('cur alpha:', alpha)
         eval(config, final_sim, total_labels)
+
+    if pmi_similarity != None:
+        print('PMI Lexical Alpha Search...')
+        for alpha in range(11):
+            alpha /= 10  # range only support int
+            final_sim = [alpha * s + (1 - alpha) * ls for s, ls in zip(model_similarity, pmi_similarity)]
+            print('cur alpha:', alpha)
+            eval(config, final_sim, total_labels)
 
 
 
