@@ -75,9 +75,11 @@ def get_labels(dict_list):
     return [[1] * len(dict['relevant']) + [0] * len(dict['irrelevant']) for dict in dict_list]
 
 def main():
-    dev_data_path = 'data/TriviaQA-dev-web.jsonl'
+    dev_data_path = 'data/HotpotQA-dev.jsonl'
+    dict_list = op.read_hotpot(dev_data_path)
+    # dev_data_path = 'data/TriviaQA-dev-web.jsonl'
     # dev_data_path = 'data/SearchQA-dev.jsonl'
-    dict_list = tp.read_jsonl_to_list_dict(dev_data_path)
+    # dict_list = tp.read_jsonl_to_list_dict(dev_data_path)
     # dev_data_path = 'data/NaturalQuestionsShort-dev.jsonl'
     # dict_list = op.read_natural_question(dev_data_path)
 

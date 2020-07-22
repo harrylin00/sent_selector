@@ -128,9 +128,15 @@ def read_natural_question(filepath):
 def read_news(filepath):
     return read_natural_question(filepath)
 
+def read_hotpot(filepath):
+    # return tp.read_jsonl_to_list_dict(filepath)
+    # return read_bioasq(filepath)
+    return read_natural_question(filepath)
+
 if __name__ == '__main__':
-    res = read_natural_question('data/NaturalQuestionsShort.jsonl')
+    # res = read_natural_question('data/NaturalQuestionsShort.jsonl')
     # res = read_bioasq('data/BioASQ.jsonl')
     # res = tp.read_jsonl_to_list_dict('data/SearchQA.jsonl')
     # res = read_news('data/NewsQA.jsonl')
+    res = read_hotpot('data/HotpotQA.jsonl')
     tp.data_metric(res)

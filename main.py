@@ -150,8 +150,9 @@ def eval():
     """ eval the model in other dataset except triviaQA"""
     config = set_config(embed_method='bert', use_charCNN=False, use_lexical=True)
 
-    dict_list = tp.read_jsonl_to_list_dict('data/SearchQA-dev.jsonl')
+    # dict_list = tp.read_jsonl_to_list_dict('data/SearchQA-dev.jsonl')
     # dict_list = op.read_natural_question('data/NaturalQuestionsShort-dev.jsonl')
+    dict_list = op.read_hotpot('data/HotpotQA-dev.jsonl')
     dataloader = data.DataLoader(dict_list, batch_size=config['batch_size'], shuffle=False, collate_fn=lambda x:x)
 
     if config['embed_method'] == 'glove':
@@ -202,6 +203,6 @@ def main():
 
 if __name__ == '__main__':
     # main()
-    lexical_parameter_search()
-    # eval()
+    # lexical_parameter_search()
+    eval()
     # debug_main()
