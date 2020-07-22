@@ -122,6 +122,7 @@ class ESIM(nn.Module):
 
             # Pooling and compute the similarity
             sim = self.pool_and_compute_sim(p_combine_out, q_combine_out)
+            sim = F.softmax(sim, dim=-1)
             similarity.append(sim)
         return similarity
 

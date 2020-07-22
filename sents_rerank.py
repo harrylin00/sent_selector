@@ -20,6 +20,7 @@ class Sent_rerank():
         Return list of sents and the corresponding scores in descending.
         Can add topk function to filter less but higher quality sentences
         """
+        query = [query] # convert str to list, easier to process
         query_tensor, query_char_tensor, query_len, paragraph_tensor, paragraph_char_tensor, paragraph_len = \
             self._get_query_para_tensor(self.config, query, sents, word2idx=self.word2idx, bert_tokenizer=self.bert_tokenizer)
 
@@ -50,6 +51,7 @@ class Sent_rerank():
         elif self.config['embed_method'] == 'glove':
             word2idx, word_embed = self._read_glove(self.config['glove_path'])
             tokenizer = None
+            bert_config = None
 
         # model setting
         if self.config['use_esim']:
@@ -180,5 +182,11 @@ class Sent_rerank():
     def _rerank_sents_by_sim(self, sents, sim):
         sort_idx = torch.argsort(sim, descending=True)
         rerank_sent = [sents[idx] for idx in sort_idx]
-        rerank_sim = [sim[idx].item() for idx in sim]
+        rerank_sim = [sim[idx].item() for idx in sort_idx]
         return rerank_sent, rerank_sim
+
+if __name__ == '__main__':
+    from main import set_config
+    config = set_config()
+    sent_rerank = Sent_rerank(config)
+    print(sent_rerank.rerank(query='Who fouded USA?', sents=['xxx was a founder of USA', 'USA was founded in 1111']))
