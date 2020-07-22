@@ -142,6 +142,7 @@ def lexical_parameter_search():
     # compute pmi score
     pmi_similarity = pmi.compute_pmi(dev_dict_list)
     pmi_similarity = [torch.FloatTensor(sim).to(config['device']) for sim in pmi_similarity]
+    pmi_similarity = [sim / torch.sum(sim) for sim in pmi_similarity]
 
     train.alpha_search(config, dev_dataloader, model, word2idx=word2idx, bert_tokenizer=tokenizer, pmi_similarity=pmi_similarity)
 
