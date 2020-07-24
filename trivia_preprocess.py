@@ -190,6 +190,19 @@ def eval_topk(similarity, labels, k):
         accuracy.append(max(topk_list))
     return np.mean(accuracy)
 
+def eval_accuracy_dynamic(similarity, labels, threshold=0.1):
+    accuracy = []
+    for sim, label in zip(similarity, labels):
+        if sum(label) == 0:
+            continue
+        sort_idx = torch.argsort(sim, descending=True)
+        top_list = [label[idx] for idx in sort_idx if sim[idx] > threshold]
+        if len(top_list) == 0:
+            accuracy.append(0)
+        else:
+            accuracy.append(max(top_list))
+    return np.mean(accuracy)
+
 def eval_precision_topk(similarity, labels, k):
     precision = []
     for sim, label in zip(similarity, labels):
@@ -198,6 +211,19 @@ def eval_precision_topk(similarity, labels, k):
         sort_idx = torch.argsort(sim, descending=True)
         topk_list = [label[idx] for i, idx in enumerate(sort_idx[:min(k, sum(label))])]
         precision.append(np.mean(topk_list))
+    return np.mean(precision)
+
+def eval_precision_dynamic(similarity, labels, threshold=0.1):
+    precision = []
+    for sim, label in zip(similarity, labels):
+        if sum(label) == 0:
+            continue
+        sort_idx = torch.argsort(sim, descending=True)
+        top_list = [label[idx] for idx in sort_idx if sim[idx] > threshold]
+        if len(top_list) == 0:
+            precision.append(0)
+        else:
+            precision.append(np.mean(top_list))
     return np.mean(precision)
 
 # ------------------
@@ -361,6 +387,28 @@ def read_alpha_dict(config):
     with open(config['alpha_file'], 'r') as f:
         obj = json.load(f)
     return obj
+
+#---------------------
+# Others
+#---------------------
+
+def record_sim(filepath, similarity, labels):
+    count = 0
+    rel_count = 0
+    with open(filepath, 'w') as f:
+        for sim, label in zip(similarity, labels):
+            sort_idx = torch.argsort(sim, descending=True)
+            for idx in sort_idx:
+                f.write(str(sim[idx].item()) + ':' + str(label[idx]) + '\t')
+                if sim[idx] > 0.1 and label[idx] == 1:
+                    rel_count += 1
+                if sim[idx] > 0.1:
+                    count += 1
+            f.write('\n')
+    count /= len(labels)
+    rel_count /= len(labels)
+    print('mean_rel_count:', rel_count)
+    print('mean_count:', count)
 
 if __name__ == '__main__':
     read_alpha_dict({'alpha_file': 'alphabet.json'})
