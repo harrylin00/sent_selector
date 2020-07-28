@@ -16,7 +16,8 @@ def set_config(embed_method='glove',
                use_lexical=False,
                aggregate_data=False,
                use_esim=False,
-               is_train=True):
+               is_train=True,
+               use_augment=False):
     config = {
         'train_data_path': 'data/TriviaQA-train-web.jsonl',
         'dev_data_path': 'data/TriviaQA-dev-web.jsonl',
@@ -54,6 +55,9 @@ def set_config(embed_method='glove',
 
         'use_esim': use_esim,
         'linear_size': 256,
+
+        'use_augment': use_augment,
+        'augment_file': 'data/trivia-que.txt',
 
         'is_load_model': True,
         'is_train': is_train,
@@ -165,7 +169,7 @@ def eval():
     train.eval(config, similarity, labels)
 
 def debug_main():
-    config = set_config(embed_method='glove', use_esim=False, is_train=True, use_lexical=True)
+    config = set_config(embed_method='glove', use_esim=False, is_train=True, use_lexical=False)
 
     # data loading
     # dev_dict_list = tp.read_jsonl_to_list_dict(config['dev_debug_data_path'])
@@ -179,18 +183,21 @@ def debug_main():
         model, optimizer, word2idx, tokenizer = bert_train(config)
 
     # training and predict
-    # train.train(config, dev_dataloader, dev_dataloader, model, optimizer, word2idx=word2idx, bert_tokenizer=tokenizer)
-    similarity, labels = train.predict(config, dataloader=dev_dataloader, model=model, word2idx=word2idx, bert_tokenizer=tokenizer)
-    tp.record_sim('sim.txt', similarity, labels)
-    precision = tp.eval_precision_dynamic(similarity, labels)
-    print('precision:', precision)
-    print('accuracy:', tp.eval_accuracy_dynamic(similarity, labels))
+    train.train(config, dev_dataloader, dev_dataloader, model, optimizer, word2idx=word2idx, bert_tokenizer=tokenizer)
+    # similarity, labels = train.predict(config, dataloader=dev_dataloader, model=model, word2idx=word2idx, bert_tokenizer=tokenizer)
+    # tp.record_sim('sim.txt', similarity, labels)
+    # precision = tp.eval_precision_dynamic(similarity, labels)
+    # print('precision:', precision)
+    # print('accuracy:', tp.eval_accuracy_dynamic(similarity, labels))
 
 def main():
-    config = set_config(embed_method='glove', use_charCNN=False, use_lexical=False, aggregate_data=False, use_esim=True)
+    config = set_config(embed_method='glove', use_augment=True)
 
     # data loading
     train_dict_list = tp.read_jsonl_to_list_dict(config['train_data_path'])
+    if config['use_augment']:
+        aug_query = tp.read_augment_data(config['augment_file'])
+        train_dict_list = tp.add_augment_to_dict_list(train_dict_list, aug_query)
     if config['aggregate_data']:
         train_dict_list.extend(tp.aggregate_data(config))
     train_dataloader = data.DataLoader(train_dict_list, batch_size=config['batch_size'], shuffle=True, collate_fn=lambda x:x)
@@ -208,7 +215,7 @@ def main():
     train.train(config, train_dataloader, dev_dataloader, model, optimizer, word2idx=word2idx, bert_tokenizer=tokenizer)
 
 if __name__ == '__main__':
-    # main()
+    main()
     # lexical_parameter_search()
     # eval()
-    debug_main()
+    # debug_main()

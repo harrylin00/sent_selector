@@ -49,6 +49,9 @@ def train_epoch(config, dataloader, model, optimizer, word2idx=None, bert_tokeni
         loss = F.cross_entropy(similarity, labels)
 
         running_loss += loss.item()
+
+        if config['use_augment']:
+            loss += train_augment_batch(config, data, model, word2idx, bert_tokenizer)
         loss.backward()
 
         if (batch_idx + 1) % config['accumulate_step'] == 0:
@@ -57,6 +60,25 @@ def train_epoch(config, dataloader, model, optimizer, word2idx=None, bert_tokeni
     end_time = time.time()
     running_loss /= len(dataloader)
     print('Training Loss:', running_loss, 'Time:', end_time - start_time, 's')
+
+def train_augment_batch(config, data, model, word2idx=None, bert_tokenizer=None):
+    """
+    The only difference with normal training epoch is to use augmented query to train
+    """
+
+    query, paragraphs, labels, query_to_para_idx = tp.get_aug_query_and_sample_paragraph(data, config)
+
+    query_tensor, query_char_tensor, query_len, paragraph_tensor, paragraph_char_tensor, paragraph_len = \
+        tp.get_query_para_tensor(config, query, paragraphs, word2idx=word2idx, bert_tokenizer=bert_tokenizer)
+
+    labels = tp.get_label_tensor(config, labels)
+
+    similarity = model.train_forward(query_tensor, query_char_tensor, query_len,
+                                     paragraph_tensor, paragraph_char_tensor, paragraph_len,
+                                     query_to_para_idx)
+
+    loss = F.cross_entropy(similarity, labels)
+    return loss
 
 #------------------------
 # Predict phase

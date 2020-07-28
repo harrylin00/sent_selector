@@ -5,6 +5,7 @@ from torch.nn.utils.rnn import *
 import numpy as np
 import other_preprocess as op
 import torch.nn.functional as F
+import nltk
 
 # ------------------
 # read and write data
@@ -39,7 +40,7 @@ def read_jsonl_to_list_dict(filepath):
             prev_offset = 0
             for token, offset in obj['context_tokens']:
                 if token == '[TLE]' or token == '[DOC]' or token == '[PAR]':
-                    if len(para) != 0:
+                    if len(para) > 10:
                         paragraphs.append(para)
                         paragraphs_offset.append((prev_offset, offset))
                     para = []
@@ -102,9 +103,27 @@ def aggregate_data(config):
             print('No such file found:', d_file)
     return data_dict
 
+def read_augment_data(filepath):
+    print('begin to read augment data:', filepath)
+    aug_query = []
+    with open(filepath, 'r') as f:
+        for line in f:
+            aug_query.append(nltk.word_tokenize(line.strip().lower()))
+    return aug_query
+
+def add_augment_to_dict_list(dict_list, augment_list):
+    for idx, aug_query in enumerate(augment_list):
+        dict_list[idx]['augment_query'] = aug_query
+    return dict_list
+
 # ------------------
 # training phase
 # ------------------
+
+def get_aug_query_and_sample_paragraph(dict_list, config):
+    aug_query = get_augment_query(dict_list)
+    aug_query, paragraphs, labels, query_to_para_idx = sample_paragraph(aug_query, dict_list, config)
+    return aug_query, paragraphs, labels, query_to_para_idx
 
 def get_query_and_sample_paragraph(dict_list, config):
     query = get_query(dict_list)
@@ -153,6 +172,9 @@ def sample_paragraph(query, dict_list, config):
 
 def get_query(dict_list):
     return [dict['question_tokens'] for dict in dict_list]
+
+def get_augment_query(dict_list):
+    return [dict['augment_query'] for dict in dict_list]
 
 # ------------------
 # predict phase
@@ -411,4 +433,5 @@ def record_sim(filepath, similarity, labels):
     print('mean_count:', count)
 
 if __name__ == '__main__':
-    read_alpha_dict({'alpha_file': 'alphabet.json'})
+    a = read_augment_data({'augment_file': 'data/trivia-que.txt'})
+    print('a')
