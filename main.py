@@ -74,6 +74,9 @@ def set_config(embed_method='glove',
         config['model_write_path'] = config['model_write_path'].replace('lstm', 'esim')
     if use_charCNN:
         config = set_charCNN_config(config)
+    if use_augment:
+        config['model_load_path'] = 'aug_' + config['model_load_path']
+        config['model_write_path'] = 'aug_' + config['model_write_path']
 
     return config
 
