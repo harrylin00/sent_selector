@@ -26,6 +26,9 @@ class SentSelector(nn.Module):
             self.cnn_embed = CharCNN(config)
             self.input_size += config['cnn_hidden_size']
 
+        if config['sample_method'] == 'pair':
+            self.diff_linear = nn.Linear(1, 1)
+
         self.dropout = nn.Dropout(self.dropout_prob)
 
         self.query_linear = nn.Linear(2 * self.hidden_size, self.hidden_size)
@@ -53,12 +56,18 @@ class SentSelector(nn.Module):
         query_hidden= self.encode_query(query, query_char, query_len)   # out: [batch, seq_len, hidden]
         paragraph_hidden = self.encode_paragraph(paragraph, paragraph_char, paragraph_len)   #[ir+re * batch, seq_len, hidden]
         similarity = self.compute_similarity(query_hidden, paragraph_hidden)
-        return similarity
+        if self.config['sample_method'] == 'list':
+            return similarity
+        else:   # pair-wise, following RankNet idea
+            prob = self.pair_prob(similarity)
+            return prob
 
     def predict_forward(self, query, query_char, query_len, paragraph, paragraph_char, paragraph_len, query_to_para_idx):
         query_hidden = self.encode_query(query, query_char, query_len)
         paragraph_hidden = self.encode_paragraph(paragraph, paragraph_char, paragraph_len)
         similarity = self.predict_compute_similarity(query_hidden, paragraph_hidden, query_to_para_idx)
+        if self.config['sample_method'] == 'pair':
+            similarity = [F.sigmoid(sim) for sim in similarity]
         return similarity
 
     def encode_query(self, query, query_char, query_len):
@@ -123,6 +132,17 @@ class SentSelector(nn.Module):
             que = query[i].unsqueeze(1).clone()  # [hidden, 1]
             para = paragraph[query_to_para_idx[i] : query_to_para_idx[i + 1]].clone()   #[num, hidden]
             sim = torch.mm(para, que).squeeze()   # [num]
-            sim = F.softmax(sim, dim=-1)
+            if self.config['sample_method'] == 'list':
+                sim = F.softmax(sim, dim=-1)
             similarity.append(sim)
         return similarity
+
+    def pair_prob(self, similarity):
+        """
+        :param similarity: [batch, 2], compute the prob that first doc has a higher relevance
+        :return:
+        """
+        similarity = torch.sigmoid(similarity)
+        diff = (similarity[:, 0] - similarity[:, 1]).unsqueeze(1)   # [batch, 1]
+        diff = torch.sigmoid(self.diff_linear(diff))
+        return diff

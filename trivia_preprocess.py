@@ -365,6 +365,11 @@ def data_metric(data_dict):
     print('irrelevant_num per question: ', irrelevant_num / question_num)
     print('para_length per para: ', para_len / para_num)
 
+def standardize(tensor):
+    mean = torch.mean(tensor)
+    std = torch.std(tensor)
+    return (tensor - mean) / std
+
 # ------------------
 # Bert utility function
 # ------------------

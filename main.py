@@ -17,19 +17,21 @@ def set_config(embed_method='glove',
                aggregate_data=False,
                use_esim=False,
                is_train=True,
-               use_augment=False):
+               use_augment=False,
+               sample_method='list'):
     config = {
         'train_data_path': 'data/TriviaQA-train-web.jsonl',
         'dev_data_path': 'data/TriviaQA-dev-web.jsonl',
         'dev_debug_data_path': 'data/TriviaQA-dev-small-web.jsonl',
         'glove_path': 'embeddings/glove.6B.300d.txt',
-        'model_write_path': 'lstm_'+embed_method+'.pt' if not aggregate_data else 'agg_lstm_'+embed_method+'.pt',
-        'model_load_path': 'lstm_'+embed_method+'.pt'  if not aggregate_data else 'agg_lstm_'+embed_method+'.pt',
+        'model_write_path': 'list_lstm_'+embed_method+'.pt' if not aggregate_data else 'agg_lstm_'+embed_method+'.pt',
+        'model_load_path': 'list_lstm_'+embed_method+'.pt'  if not aggregate_data else 'agg_lstm_'+embed_method+'.pt',
 
         'embed_method': embed_method,
         'bert_config': 'bert-base-uncased',
         'freeze_bert': True,
 
+        'sample_method': sample_method,
         'relevant_num': 1,
         'irrelevant_num': 5,
 
@@ -77,6 +79,11 @@ def set_config(embed_method='glove',
     if use_augment:
         config['model_load_path'] = 'aug_' + config['model_load_path']
         config['model_write_path'] = 'aug_' + config['model_write_path']
+
+    if sample_method == 'pair':
+        config['irrelevant_num'] = 1
+        config['model_load_path'] = 'pair_' + config['model_load_path']
+        config['model_write_path'] = 'pair_' + config['model_write_path']
 
     return config
 
@@ -172,11 +179,11 @@ def eval():
     train.eval(config, similarity, labels)
 
 def debug_main():
-    config = set_config(embed_method='glove', use_esim=False, is_train=True, use_lexical=False)
+    config = set_config(embed_method='glove', use_esim=False, is_train=True, use_lexical=False, sample_method='pair')
 
     # data loading
-    # dev_dict_list = tp.read_jsonl_to_list_dict(config['dev_debug_data_path'])
-    dev_dict_list = tp.read_jsonl_to_list_dict(config['dev_data_path'])
+    dev_dict_list = tp.read_jsonl_to_list_dict(config['dev_debug_data_path'])
+    # dev_dict_list = tp.read_jsonl_to_list_dict(config['dev_data_path'])
     dev_dataloader = data.DataLoader(dev_dict_list, batch_size=config['batch_size'], shuffle=False,
                                      collate_fn=lambda x: x)
 
@@ -188,13 +195,14 @@ def debug_main():
     # training and predict
     train.train(config, dev_dataloader, dev_dataloader, model, optimizer, word2idx=word2idx, bert_tokenizer=tokenizer)
     # similarity, labels = train.predict(config, dataloader=dev_dataloader, model=model, word2idx=word2idx, bert_tokenizer=tokenizer)
+    # similarity = [tp.standardize(sim) for sim in similarity]
     # tp.record_sim('sim.txt', similarity, labels)
-    # precision = tp.eval_precision_dynamic(similarity, labels)
+    # precision = tp.eval_precision_dynamic(similarity, labels, threshold=0.1)
     # print('precision:', precision)
-    # print('accuracy:', tp.eval_accuracy_dynamic(similarity, labels))
+    # print('accuracy:', tp.eval_accuracy_dynamic(similarity, labels, threshold=0.1))
 
 def main():
-    config = set_config(embed_method='glove', use_augment=True)
+    config = set_config(embed_method='glove', use_augment=False, sample_method='pair')
 
     # data loading
     train_dict_list = tp.read_jsonl_to_list_dict(config['train_data_path'])

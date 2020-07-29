@@ -5,10 +5,11 @@ import sys
 
 import trivia_preprocess as tp
 
-#------------------------
+
+# ------------------------
 # Training phase
 # The main difference between Bert and Glove training is how to TOKENIZE and VECTORIZE the text
-#------------------------
+# ------------------------
 
 def train(config, train_dataloader, dev_dataloader, model, optimizer, word2idx=None, bert_tokenizer=None):
     max_accuracy = 0
@@ -17,7 +18,7 @@ def train(config, train_dataloader, dev_dataloader, model, optimizer, word2idx=N
         if config['is_train']:
             train_epoch(config, train_dataloader, model, optimizer, word2idx=word2idx, bert_tokenizer=bert_tokenizer)
         similarity, labels = predict(config, dev_dataloader, model, word2idx=word2idx, bert_tokenizer=bert_tokenizer)
-        
+
         # eval in topk
         accuracy = eval(config, similarity, labels)
         if max_accuracy < accuracy and config['is_train']:
@@ -26,6 +27,7 @@ def train(config, train_dataloader, dev_dataloader, model, optimizer, word2idx=N
         if not config['is_train']:
             break
     print('best model top 1:', max_accuracy)
+
 
 def train_epoch(config, dataloader, model, optimizer, word2idx=None, bert_tokenizer=None):
     model.train()
@@ -46,12 +48,15 @@ def train_epoch(config, dataloader, model, optimizer, word2idx=None, bert_tokeni
                                          paragraph_tensor, paragraph_char_tensor, paragraph_len,
                                          query_to_para_idx)
 
-        loss = F.cross_entropy(similarity, labels)
+        if config['sample_method'] == 'list':
+            loss = F.cross_entropy(similarity, labels)
+        else:
+            loss = F.binary_cross_entropy(similarity.squeeze(), labels.float())
 
         running_loss += loss.item()
 
         if config['use_augment']:
-            loss += train_augment_batch(config, data, model, word2idx, bert_tokenizer)
+            loss += train_augment_batch(config, data, paragraphs, labels, model, word2idx, bert_tokenizer)
         loss.backward()
 
         if (batch_idx + 1) % config['accumulate_step'] == 0:
@@ -61,17 +66,20 @@ def train_epoch(config, dataloader, model, optimizer, word2idx=None, bert_tokeni
     running_loss /= len(dataloader)
     print('Training Loss:', running_loss, 'Time:', end_time - start_time, 's')
 
-def train_augment_batch(config, data, model, word2idx=None, bert_tokenizer=None):
+
+def train_augment_batch(config, data, origin_paragraph, origin_label, model, word2idx=None, bert_tokenizer=None):
     """
     The only difference with normal training epoch is to use augmented query to train
     """
 
     query, paragraphs, labels, query_to_para_idx = tp.get_aug_query_and_sample_paragraph(data, config)
+    paragraphs = origin_paragraph
+    labels = origin_label
 
     query_tensor, query_char_tensor, query_len, paragraph_tensor, paragraph_char_tensor, paragraph_len = \
         tp.get_query_para_tensor(config, query, paragraphs, word2idx=word2idx, bert_tokenizer=bert_tokenizer)
 
-    labels = tp.get_label_tensor(config, labels)
+    # labels = tp.get_label_tensor(config, labels)
 
     similarity = model.train_forward(query_tensor, query_char_tensor, query_len,
                                      paragraph_tensor, paragraph_char_tensor, paragraph_len,
@@ -80,9 +88,10 @@ def train_augment_batch(config, data, model, word2idx=None, bert_tokenizer=None)
     loss = F.cross_entropy(similarity, labels)
     return loss
 
-#------------------------
+
+# ------------------------
 # Predict phase
-#------------------------
+# ------------------------
 
 def predict(config, dataloader, model, word2idx=None, bert_tokenizer=None):
     print('begin to predict')
@@ -97,14 +106,14 @@ def predict(config, dataloader, model, word2idx=None, bert_tokenizer=None):
         for batch_idx, data in enumerate(dataloader):
             # List[List[str]], List[List[str]], List[int]
             query, paragraph, labels, query_to_para_idx = tp.get_query_and_paragraph(data, config)
-            query_tensor, query_char_tensor, query_len, paragraph_tensor, paragraph_char_tensor, paragraph_len =\
+            query_tensor, query_char_tensor, query_len, paragraph_tensor, paragraph_char_tensor, paragraph_len = \
                 tp.get_query_para_tensor(config, query, paragraph, word2idx=word2idx, bert_tokenizer=bert_tokenizer)
 
             sim = model.predict_forward(query_tensor, query_char_tensor, query_len,
                                         paragraph_tensor, paragraph_char_tensor, paragraph_len,
-                                        query_to_para_idx)   # List[(para_num)]
+                                        query_to_para_idx)  # List[(para_num)]
 
-            if config['use_lexical']:    # use lexical information by computing tf-idf values
+            if config['use_lexical']:  # use lexical information by computing tf-idf values
                 lexical_sim = tp.compute_lexical_similarity(config, query, paragraph, query_to_para_idx)
                 alpha = config['lexical_alpha']
                 sim = [alpha * s + (1 - alpha) * ls for s, ls in zip(sim, lexical_sim)]
@@ -119,9 +128,10 @@ def predict(config, dataloader, model, word2idx=None, bert_tokenizer=None):
     print('Inter time per query:', (end - start) / len(similarity), 's')
     return similarity, total_labels
 
-#------------------------
+
+# ------------------------
 # Eval phase
-#------------------------
+# ------------------------
 
 def eval(config, similarity, labels):
     k1_accuracy = 0
@@ -133,9 +143,10 @@ def eval(config, similarity, labels):
         print('model top', k, ' accuracy evaluation:', accuracy, ', precision evaluation:', precision)
     return k1_accuracy
 
-#------------------------
+
+# ------------------------
 # Hyperparameter search
-#------------------------
+# ------------------------
 
 def alpha_search(config, dataloader, model, word2idx=None, bert_tokenizer=None, pmi_similarity=None):
     total_labels = []
@@ -148,12 +159,12 @@ def alpha_search(config, dataloader, model, word2idx=None, bert_tokenizer=None, 
         for batch_idx, data in enumerate(dataloader):
             # List[List[str]], List[List[str]], List[int]
             query, paragraph, labels, query_to_para_idx = tp.get_query_and_paragraph(data, config)
-            query_tensor, query_char_tensor, query_len, paragraph_tensor, paragraph_char_tensor, paragraph_len =\
+            query_tensor, query_char_tensor, query_len, paragraph_tensor, paragraph_char_tensor, paragraph_len = \
                 tp.get_query_para_tensor(config, query, paragraph, word2idx=word2idx, bert_tokenizer=bert_tokenizer)
 
             sim = model.predict_forward(query_tensor, query_char_tensor, query_len,
                                         paragraph_tensor, paragraph_char_tensor, paragraph_len,
-                                        query_to_para_idx)   # List[(para_num)]
+                                        query_to_para_idx)  # List[(para_num)]
             lexical_sim = tp.compute_lexical_similarity(config, query, paragraph, query_to_para_idx)
 
             model_similarity.extend(sim)
@@ -162,7 +173,7 @@ def alpha_search(config, dataloader, model, word2idx=None, bert_tokenizer=None, 
 
     print('TF-IDF Lexical Alpha Search...')
     for alpha in range(11):
-        alpha /= 10         # range only support int
+        alpha /= 10  # range only support int
         final_sim = [alpha * s + (1 - alpha) * ls for s, ls in zip(model_similarity, lexical_similarity)]
         print('cur alpha:', alpha)
         eval(config, final_sim, total_labels)
