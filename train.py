@@ -51,6 +51,9 @@ def train_epoch(config, dataloader, model, optimizer, word2idx=None, bert_tokeni
         if config['sample_method'] == 'list':
             loss = F.cross_entropy(similarity, labels)
         else:
+            # similarity means the prob that first has a higher relevance than the second one (in which case label = 0)
+            # so change labels below.
+            labels = 1 - labels
             loss = F.binary_cross_entropy(similarity.squeeze(), labels.float())
 
         running_loss += loss.item()

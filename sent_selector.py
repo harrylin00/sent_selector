@@ -67,7 +67,7 @@ class SentSelector(nn.Module):
         paragraph_hidden = self.encode_paragraph(paragraph, paragraph_char, paragraph_len)
         similarity = self.predict_compute_similarity(query_hidden, paragraph_hidden, query_to_para_idx)
         if self.config['sample_method'] == 'pair':
-            similarity = [F.sigmoid(sim) for sim in similarity]
+            similarity = [torch.sigmoid(sim) for sim in similarity]
         return similarity
 
     def encode_query(self, query, query_char, query_len):
@@ -142,7 +142,7 @@ class SentSelector(nn.Module):
         :param similarity: [batch, 2], compute the prob that first doc has a higher relevance
         :return:
         """
-        similarity = torch.sigmoid(similarity)
+        # similarity = torch.sigmoid(similarity)
         diff = (similarity[:, 0] - similarity[:, 1]).unsqueeze(1)   # [batch, 1]
         diff = torch.sigmoid(self.diff_linear(diff))
         return diff
