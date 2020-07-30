@@ -82,8 +82,8 @@ def set_config(embed_method='glove',
 
     if sample_method == 'pair':
         config['irrelevant_num'] = 1
-        config['model_load_path'] = 'pair_' + config['model_load_path']
-        config['model_write_path'] = 'pair_' + config['model_write_path']
+        config['model_load_path'] = config['model_load_path'].replace('list', 'pair')
+        config['model_write_path'] = config['model_write_path'].replace('list', 'pair')
 
     return config
 
@@ -201,6 +201,29 @@ def debug_main():
     # print('precision:', precision)
     # print('accuracy:', tp.eval_accuracy_dynamic(similarity, labels, threshold=0.1))
 
+def train_hotpotqa():
+    config = set_config(embed_method='glove')
+    config['train_data_path'] = 'data/HotpotQA-origin-train.jsonl'
+    config['dev_data_path'] = 'data/HotpotQA-origin-dev.jsonl'
+    config['model_load_path'] = 'hotpot_' + config['model_load_path']
+    config['model_write_path'] = 'hotpot_' + config['model_write_path']
+
+    train_dict_list = op.read_original_hotpot(config['train_data_path'])
+    train_dataloader = data.DataLoader(train_dict_list, batch_size=config['batch_size'], shuffle=True,
+                                       collate_fn=lambda x: x)
+
+    dev_dict_list = op.read_original_hotpot(config['dev_data_path'])
+    dev_dataloader = data.DataLoader(dev_dict_list, batch_size=config['batch_size'], shuffle=False,
+                                     collate_fn=lambda x: x)
+
+    if config['embed_method'] == 'glove':
+        model, optimizer, word2idx, tokenizer = glove_train(config)
+    elif config['embed_method'] == 'bert':
+        model, optimizer, word2idx, tokenizer = bert_train(config)
+
+    # training and predict
+    train.train(config, train_dataloader, dev_dataloader, model, optimizer, word2idx=word2idx, bert_tokenizer=tokenizer)
+
 def main():
     config = set_config(embed_method='glove', use_augment=False, sample_method='pair')
 
@@ -229,4 +252,5 @@ if __name__ == '__main__':
     # main()
     # lexical_parameter_search()
     # eval()
-    debug_main()
+    # debug_main()
+    train_hotpotqa()

@@ -2,6 +2,7 @@
 
 import json
 import spacy
+import nltk
 import trivia_preprocess as tp
 
 def read_bioasq(filepath):
@@ -129,14 +130,51 @@ def read_news(filepath):
     return read_natural_question(filepath)
 
 def read_hotpot(filepath):
-    # return tp.read_jsonl_to_list_dict(filepath)
-    # return read_bioasq(filepath)
     return read_natural_question(filepath)
+
+def read_original_hotpot(filepath):
+    print('begin to read', filepath)
+    with open(filepath, 'r') as f:
+        for line in f:
+            res = json.loads(line)
+    return res
+
+def convert_original_hotpot_to_format(filepath):
+    """ Read original format of HotpotQA (distractor setting) """
+    print('begin to read', filepath)
+    with open(filepath, 'r') as f:
+        for line in f:
+            list_of_dict = json.loads(line)
+
+    res = []
+    for cur_dict in list_of_dict:
+        temp_dict = {
+            'qid' : cur_dict['_id'],
+            'question_tokens': nltk.word_tokenize(cur_dict['question']),
+            'relevant': [],
+            'irrelevant': []
+        }
+
+        supporting_facts = cur_dict['supporting_facts']
+        context = cur_dict['context']
+        supporting_facts_set = set([fact[0].lower() + str(fact[1]) for fact in supporting_facts])
+        for cont in context:
+            title = cont[0].lower()
+            for idx, para in enumerate(cont[1]):
+                if title + str(idx) in supporting_facts_set:
+                    temp_dict['relevant'].append(nltk.word_tokenize(para.lower()))
+                else:
+                    temp_dict['irrelevant'].append(nltk.word_tokenize(para.lower()))
+        res.append(temp_dict)
+    return res
 
 if __name__ == '__main__':
     # res = read_natural_question('data/NaturalQuestionsShort.jsonl')
     # res = read_bioasq('data/BioASQ.jsonl')
     # res = tp.read_jsonl_to_list_dict('data/SearchQA.jsonl')
     # res = read_news('data/NewsQA.jsonl')
-    res = read_hotpot('data/HotpotQA.jsonl')
-    tp.data_metric(res)
+    # res = read_original_hotpot('data/HotpotQA-origin-train.jsonl')
+    # tp.data_metric(res)
+    res = convert_original_hotpot_to_format('data/hotpot_train_v1.1.json')
+    with open('data/HotpotQA-origin-train.jsonl', 'w') as f:
+        f.write(json.dumps(res))
