@@ -38,6 +38,7 @@ def set_config(embed_method='glove',
         'hidden_size': 256,
         'num_layer': 3,
         'dropout': 0.2,
+        'weight_decay': 0.1,    # regularization for weights in the model
 
         'use_lexical': use_lexical,   # use tf-idf similarity or not
         'lexical_alpha': 0.5,
@@ -105,7 +106,7 @@ def load_model_and_optim(config, model):
     # optimizer setting
     # When using bert, we will freeze the word embeddings so we should filter it out before feeding into the optimizer
     parameters = filter(lambda p: p.requires_grad, model.parameters())
-    optimizer = optim.Adam(parameters)
+    optimizer = optim.Adam(parameters, weight_decay=config['weight_decay'])
     return model, optimizer
 
 def glove_train(config):
@@ -249,8 +250,8 @@ def main():
     train.train(config, train_dataloader, dev_dataloader, model, optimizer, word2idx=word2idx, bert_tokenizer=tokenizer)
 
 if __name__ == '__main__':
-    # main()
+    main()
     # lexical_parameter_search()
     # eval()
     # debug_main()
-    train_hotpotqa()
+    # train_hotpotqa()

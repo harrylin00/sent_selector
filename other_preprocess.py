@@ -137,6 +137,9 @@ def read_original_hotpot(filepath):
     with open(filepath, 'r') as f:
         for line in f:
             res = json.loads(line)
+    for r in res:
+        r['relevant'] = [doc for doc in r['relevant'] if len(doc) > 0]
+        r['irrelevant'] = [doc for doc in r['irrelevant'] if len(doc) > 0]
     return res
 
 def convert_original_hotpot_to_format(filepath):
@@ -173,8 +176,10 @@ if __name__ == '__main__':
     # res = read_bioasq('data/BioASQ.jsonl')
     # res = tp.read_jsonl_to_list_dict('data/SearchQA.jsonl')
     # res = read_news('data/NewsQA.jsonl')
-    # res = read_original_hotpot('data/HotpotQA-origin-train.jsonl')
+    res = read_original_hotpot('data/HotpotQA-origin-train.jsonl')
     # tp.data_metric(res)
-    res = convert_original_hotpot_to_format('data/hotpot_train_v1.1.json')
-    with open('data/HotpotQA-origin-train.jsonl', 'w') as f:
-        f.write(json.dumps(res))
+    for r in res:
+        for doc in r['relevant']:
+            if len(doc) == 0:   print('x')
+        for doc in r['irrelevant']:
+            if len(doc) == 0:   print('x')

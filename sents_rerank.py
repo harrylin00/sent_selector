@@ -3,6 +3,7 @@ import os
 import torch
 from typing import List
 from torch.nn.utils.rnn import *
+# from memory_profiler import profile
 
 from esim import ESIM
 from sent_selector import SentSelector
@@ -10,6 +11,7 @@ from sent_selector import SentSelector
 class Sent_rerank():
     def __init__(self, config):
         self.config = config
+        self.config['device'] = torch.device(self.config['device'])
         self.model, self.word2idx, self.bert_tokenizer = self._get_model()
         self.model.eval()
         self.model.to(self.config['device'])
@@ -187,6 +189,6 @@ class Sent_rerank():
 
 if __name__ == '__main__':
     from main import set_config
-    config = set_config()
+    config = set_config(embed_method='bert')
     sent_rerank = Sent_rerank(config)
     print(sent_rerank.rerank(query='Who fouded USA?', sents=['xxx was a founder of USA', 'USA was founded in 1111']))
