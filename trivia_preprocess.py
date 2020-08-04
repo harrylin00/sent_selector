@@ -160,9 +160,9 @@ def sample_paragraph(query, dict_list, config):
         # shuffle the paragraphs, not sure if it is necessary
         label_list = [0] * len(sampled_para)
         label_list[0] = 1
-        combined = list(zip(label_list, sampled_para))
-        random.shuffle(combined)
-        label_list, sampled_para = zip(*combined)
+        # combined = list(zip(label_list, sampled_para))
+        # random.shuffle(combined)
+        # label_list, sampled_para = zip(*combined)
 
         labels.append(label_list.index(1))  # find the relevant para's idx
         paragraphs.extend(sampled_para)

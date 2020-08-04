@@ -55,7 +55,7 @@ class SentSelector(nn.Module):
 
         query_hidden= self.encode_query(query, query_char, query_len)   # out: [batch, seq_len, hidden]
         paragraph_hidden = self.encode_paragraph(paragraph, paragraph_char, paragraph_len)   #[ir+re * batch, seq_len, hidden]
-        similarity = self.compute_similarity(query_hidden, paragraph_hidden)
+        similarity = self.compute_similarity(query_hidden, paragraph_hidden)    # [batch, ir+re]
         if self.config['sample_method'] == 'list':
             return similarity
         else:   # pair-wise, following RankNet idea
@@ -142,7 +142,7 @@ class SentSelector(nn.Module):
         :param similarity: [batch, 2], compute the prob that first doc has a higher relevance
         :return:
         """
-        # similarity = torch.sigmoid(similarity)
-        diff = (similarity[:, 0] - similarity[:, 1]).unsqueeze(1)   # [batch, 1]
-        diff = torch.sigmoid(self.diff_linear(diff))
+        similarity = torch.sigmoid(similarity)
+        diff = (similarity[:, 0] - similarity[:, 1])   # [batch]
+        # diff = torch.sigmoid(diff)
         return diff
