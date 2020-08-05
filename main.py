@@ -38,7 +38,7 @@ def set_config(embed_method='glove',
         'hidden_size': 256,
         'num_layer': 3,
         'dropout': 0.2,
-        'weight_decay': 0.1,    # regularization for weights in the model
+        'weight_decay': 0,    # regularization for weights in the model
 
         'use_lexical': use_lexical,   # use tf-idf similarity or not
         'lexical_alpha': 0.5,
@@ -226,7 +226,7 @@ def train_hotpotqa():
     train.train(config, train_dataloader, dev_dataloader, model, optimizer, word2idx=word2idx, bert_tokenizer=tokenizer)
 
 def main():
-    config = set_config(embed_method='glove', use_augment=False, sample_method='pair')
+    config = set_config(embed_method='glove', use_augment=False, sample_method='list')
 
     # data loading
     train_dict_list = tp.read_jsonl_to_list_dict(config['train_data_path'])
