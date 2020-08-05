@@ -24,10 +24,11 @@ def set_config(embed_method='glove',
         'dev_data_path': 'data/TriviaQA-dev-web.jsonl',
         'dev_debug_data_path': 'data/TriviaQA-dev-small-web.jsonl',
         'glove_path': 'embeddings/glove.6B.300d.txt',
-        'model_write_path': 'list_lstm_'+embed_method+'.pt' if not aggregate_data else 'agg_lstm_'+embed_method+'.pt',
-        'model_load_path': 'list_lstm_'+embed_method+'.pt'  if not aggregate_data else 'agg_lstm_'+embed_method+'.pt',
+        'model_write_path': sample_method + '_lstm_'+embed_method+'.pt' if not aggregate_data else 'agg_lstm_'+embed_method+'.pt',
+        'model_load_path': sample_method + '_lstm_'+embed_method+'.pt'  if not aggregate_data else 'agg_lstm_'+embed_method+'.pt',
 
         'embed_method': embed_method,
+        'norm_sim': True,
         'bert_config': 'bert-base-uncased',
         'freeze_bert': True,
 
@@ -83,8 +84,6 @@ def set_config(embed_method='glove',
 
     if sample_method == 'pair':
         config['irrelevant_num'] = 1
-        config['model_load_path'] = config['model_load_path'].replace('list', 'pair')
-        config['model_write_path'] = config['model_write_path'].replace('list', 'pair')
 
     return config
 
@@ -226,7 +225,7 @@ def train_hotpotqa():
     train.train(config, train_dataloader, dev_dataloader, model, optimizer, word2idx=word2idx, bert_tokenizer=tokenizer)
 
 def main():
-    config = set_config(embed_method='glove', use_augment=False, sample_method='list')
+    config = set_config(embed_method='glove', use_augment=False, sample_method='point')
 
     # data loading
     train_dict_list = tp.read_jsonl_to_list_dict(config['train_data_path'])

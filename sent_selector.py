@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from torch.nn.utils.rnn import *
 import torch.nn.functional as F
+import numpy as np
 
 from charCNN import CharCNN
 
@@ -58,15 +59,18 @@ class SentSelector(nn.Module):
         similarity = self.compute_similarity(query_hidden, paragraph_hidden)    # [batch, ir+re]
         if self.config['sample_method'] == 'list':
             return similarity
-        else:   # pair-wise, following RankNet idea
+        elif self.config['sample_method'] == 'pair':   # pair-wise, following RankNet idea
             prob = self.pair_prob(similarity)
             return prob
+        else:   # point-wise, use sigmoid to compute the probability
+            similarity = torch.sigmoid(similarity)
+            return similarity
 
     def predict_forward(self, query, query_char, query_len, paragraph, paragraph_char, paragraph_len, query_to_para_idx):
         query_hidden = self.encode_query(query, query_char, query_len)
         paragraph_hidden = self.encode_paragraph(paragraph, paragraph_char, paragraph_len)
         similarity = self.predict_compute_similarity(query_hidden, paragraph_hidden, query_to_para_idx)
-        if self.config['sample_method'] == 'pair':
+        if self.config['sample_method'] == 'pair' or self.config['sample_method'] == 'point':
             similarity = [torch.sigmoid(sim) for sim in similarity]
         return similarity
 
@@ -122,7 +126,8 @@ class SentSelector(nn.Module):
         query = query.reshape(batch_size, self.hidden_size, 1)
         paragraph = paragraph.reshape(batch_size, -1, self.hidden_size)
         sim_result = torch.bmm(paragraph, query).squeeze(dim=-1)    # [batch_size, rel+irrel num]
-        sim_result = sim_result / torch.sqrt(self.hidden_size)
+        if self.config['norm_sim']:
+            sim_result = sim_result / np.sqrt(self.hidden_size)
         return sim_result
 
     def predict_compute_similarity(self, query, paragraph, query_to_para_idx):
@@ -133,7 +138,8 @@ class SentSelector(nn.Module):
             que = query[i].unsqueeze(1).clone()  # [hidden, 1]
             para = paragraph[query_to_para_idx[i] : query_to_para_idx[i + 1]].clone()   #[num, hidden]
             sim = torch.mm(para, que).squeeze()   # [num]
-            sim = sim / torch.sqrt(self.hidden_size)
+            if self.config['norm_sim']:
+                sim = sim / np.sqrt(self.hidden_size)
             if self.config['sample_method'] == 'list':
                 sim = F.softmax(sim, dim=-1)
             similarity.append(sim)

@@ -50,12 +50,17 @@ def train_epoch(config, dataloader, model, optimizer, word2idx=None, bert_tokeni
 
         if config['sample_method'] == 'list':
             loss = F.cross_entropy(similarity, labels)
-        else:
+        elif config['sample_method'] == 'pair':
             # similarity means the prob that first has a higher relevance than the second one (in which case label = 0)
             # so change labels below.
             # labels = 1 - labels
             # loss = F.binary_cross_entropy(similarity.squeeze(), labels.float())
             loss = torch.sum(1 - similarity)
+        else:
+            labels = F.one_hot(labels, num_classes=config['relevant_num'] + config['irrelevant_num']).reshape(-1)
+            similarity = similarity.reshape(-1)
+            loss = F.binary_cross_entropy(similarity, labels.float())
+
 
         running_loss += loss.item()
 
