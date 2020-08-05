@@ -122,7 +122,7 @@ class SentSelector(nn.Module):
         query = query.reshape(batch_size, self.hidden_size, 1)
         paragraph = paragraph.reshape(batch_size, -1, self.hidden_size)
         sim_result = torch.bmm(paragraph, query).squeeze(dim=-1)    # [batch_size, rel+irrel num]
-        # sim_result = sim_result / torch.sqrt(self.hidden_size)
+        sim_result = sim_result / torch.sqrt(self.hidden_size)
         return sim_result
 
     def predict_compute_similarity(self, query, paragraph, query_to_para_idx):
@@ -133,6 +133,7 @@ class SentSelector(nn.Module):
             que = query[i].unsqueeze(1).clone()  # [hidden, 1]
             para = paragraph[query_to_para_idx[i] : query_to_para_idx[i + 1]].clone()   #[num, hidden]
             sim = torch.mm(para, que).squeeze()   # [num]
+            sim = sim / torch.sqrt(self.hidden_size)
             if self.config['sample_method'] == 'list':
                 sim = F.softmax(sim, dim=-1)
             similarity.append(sim)
